@@ -141,12 +141,12 @@ fun Application(client: HttpClient) {
     val renderer = remember { createDefaultBlueprintRegistry() }
 
     LaunchedEffect(currentScreen) {
-        when (val screen = currentScreen) {
+        when (currentScreen) {
             is Screen.OrderList -> loadScreen("/orders")
 
-            is Screen.OrderDetail -> loadScreen("/orders/${screen.orderId}")
+            is Screen.OrderDetail -> loadScreen("/orders/${currentScreen.orderId}")
 
-            is Screen.Tracking -> loadScreen("/orders/${screen.orderId}/tracking")
+            is Screen.Tracking -> loadScreen("/orders/${currentScreen.orderId}/tracking")
         }
     }
 
