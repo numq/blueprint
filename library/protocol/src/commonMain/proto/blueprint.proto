@@ -1,0 +1,181 @@
+syntax = "proto3";
+
+package blueprint.protocol;
+
+option java_package = "io.github.numq.blueprint.protocol";
+option java_multiple_files = true;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "layout.proto";
+import "material3.proto";
+
+message Blueprint {
+  string id = 1;
+  string version = 2;
+  map<string, string> state = 3;
+  Node root = 4;
+  BlueprintMetadata metadata = 5;
+}
+
+message BlueprintMetadata {
+  string title = 1;
+  string description = 2;
+  int64 created_at = 3;
+  int64 updated_at = 4;
+  map<string, string> custom_fields = 5;
+}
+
+message Node {
+  string key = 1;
+  repeated Node children = 2;
+  map<string, Node> slots = 3;
+  repeated Modifier modifiers = 4;
+
+  oneof payload {
+    blueprint.layout.Column column = 10;
+    blueprint.layout.Row row = 11;
+    blueprint.layout.Box box = 12;
+    blueprint.layout.LazyColumn lazy_column = 13;
+    blueprint.layout.Spacer spacer = 14;
+
+    blueprint.material.Text text = 20;
+    blueprint.material.Button button = 21;
+    blueprint.material.Card card = 22;
+    blueprint.material.Icon icon = 23;
+    blueprint.material.TextField text_field = 24;
+    blueprint.material.Checkbox checkbox = 25;
+    blueprint.material.Switch switch_widget = 26;
+    blueprint.material.ProgressIndicator progress_indicator = 27;
+    blueprint.material.Image image = 28;
+
+    google.protobuf.Any custom_extension = 99;
+  }
+}
+
+message Modifier {
+  oneof type {
+    PaddingModifier padding = 1;
+    SizeModifier size = 2;
+    BackgroundModifier background = 3;
+    CornerRadiusModifier corner_radius = 4;
+    AlphaModifier alpha = 5;
+    VisibilityModifier visibility = 6;
+    ElevationModifier elevation = 7;
+    WeightModifier weight = 8;
+  }
+}
+
+message PaddingModifier {
+  float start = 1;
+  float top = 2;
+  float end = 3;
+  float bottom = 4;
+}
+
+message SizeModifier {
+  float width = 1;
+  float height = 2;
+}
+
+message BackgroundModifier {
+  string colorHex = 1;
+}
+
+message CornerRadiusModifier {
+  float radius = 1;
+}
+
+message AlphaModifier {
+  float alpha = 1;
+}
+
+message VisibilityModifier {
+  bool visible = 1;
+}
+
+message ElevationModifier {
+  float elevation = 1;
+}
+
+message WeightModifier {
+  float weight = 1;
+}
+
+message Intent {
+  string id = 1;
+  string type = 2;
+  string node_key = 3;
+
+  oneof payload {
+    string text_value = 10;
+    bool bool_value = 11;
+    int32 int_value = 12;
+    float float_value = 13;
+    google.protobuf.Any custom_data = 14;
+  }
+
+  google.protobuf.Timestamp timestamp = 5;
+  IntentPriority priority = 6;
+}
+
+enum IntentPriority {
+  NORMAL = 0;
+  HIGH = 1;
+  CRITICAL = 2;
+}
+
+message Resolution {
+  map<string, string> state_patches = 1;
+  repeated Effect effects = 2;
+  string target_node = 3;
+}
+
+message Effect {
+  string type = 1;
+  google.protobuf.Any payload = 2;
+  EffectTiming timing = 3;
+}
+
+message EffectTiming {
+  int32 duration_ms = 1;
+  int32 delay_ms = 2;
+}
+
+message NavigateEffect {
+  string screen_id = 1;
+  map<string, string> params = 2;
+  NavigationType navigation_type = 3;
+}
+
+enum NavigationType {
+  PUSH = 0;
+  REPLACE = 1;
+  POP = 2;
+}
+
+message SnackbarEffect {
+  string message = 1;
+  bool is_error = 2;
+  int32 duration_ms = 3;
+  string action_label = 4;
+  string action_intent = 5;
+}
+
+message DialogEffect {
+  string title = 1;
+  string message = 2;
+  repeated DialogAction actions = 3;
+}
+
+message DialogAction {
+  string label = 1;
+  string intent = 2;
+  bool is_primary = 3;
+}
+
+message AnimationEffect {
+  string node_key = 1;
+  string animation_type = 2;
+  int32 duration_ms = 3;
+}

@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package blueprint.material;
+
+option java_package = "io.github.numq.blueprint.material";
+option java_multiple_files = true;
+
+import "type.proto";
+
+message Text {
+  blueprint.type.DynamicString content = 1;
+  TextSize size = 2;
+  ColorRole color = 3;
+  string colorHex = 4;
+  TextAlign align = 5;
+  int32 max_lines = 6;
+}
+
+message Button {
+  blueprint.type.DynamicString text = 1;
+  ButtonVariant variant = 2;
+  blueprint.type.DynamicBool enabled = 3;
+  string on_click_intent_id = 4;
+}
+
+message Card {
+  CardVariant variant = 1;
+  string on_click_intent_id = 2;
+}
+
+message Icon {
+  string name = 1;
+  ColorRole tint = 2;
+  IconSize size = 3;
+}
+
+message TextField {
+  blueprint.type.DynamicString value = 1;
+  blueprint.type.DynamicString placeholder = 2;
+  blueprint.type.DynamicBool enabled = 3;
+  string on_change_intent_id = 4;
+}
+
+message Checkbox {
+  blueprint.type.DynamicBool checked = 1;
+  blueprint.type.DynamicBool enabled = 2;
+  string on_change_intent_id = 3;
+}
+
+message Switch {
+  blueprint.type.DynamicBool checked = 1;
+  blueprint.type.DynamicBool enabled = 2;
+  string on_change_intent_id = 3;
+}
+
+message ProgressIndicator {
+  bool is_linear = 1;
+  blueprint.type.DynamicFloat progress = 2;
+}
+
+message Image {
+  blueprint.type.DynamicString url = 1;
+  string content_description = 2;
+}
+
+enum ButtonVariant {
+  BUTTON_FILLED = 0;
+  BUTTON_OUTLINED = 1;
+  BUTTON_TEXT = 2;
+  BUTTON_ELEVATED = 3;
+  BUTTON_FILLED_TONAL = 4;
+}
+
+enum CardVariant {
+  CARD_ELEVATED = 0;
+  CARD_FILLED = 1;
+  CARD_OUTLINED = 2;
+}
+
+enum TextSize {
+  TEXT_DISPLAY_LARGE = 0;
+  TEXT_DISPLAY_MEDIUM = 1;
+  TEXT_DISPLAY_SMALL = 2;
+  TEXT_HEADLINE_LARGE = 3;
+  TEXT_HEADLINE_MEDIUM = 4;
+  TEXT_HEADLINE_SMALL = 5;
+  TEXT_TITLE_LARGE = 6;
+  TEXT_TITLE_MEDIUM = 7;
+  TEXT_TITLE_SMALL = 8;
+  TEXT_BODY_LARGE = 9;
+  TEXT_BODY_MEDIUM = 10;
+  TEXT_BODY_SMALL = 11;
+  TEXT_LABEL_LARGE = 12;
+  TEXT_LABEL_MEDIUM = 13;
+  TEXT_LABEL_SMALL = 14;
+}
+
+enum ColorRole {
+  COLOR_PRIMARY = 0;
+  COLOR_ON_PRIMARY = 1;
+  COLOR_SECONDARY = 2;
+  COLOR_ON_SECONDARY = 3;
+  COLOR_ERROR = 4;
+  COLOR_ON_ERROR = 5;
+  COLOR_SURFACE = 6;
+  COLOR_ON_SURFACE = 7;
+  COLOR_BACKGROUND = 8;
+  COLOR_ON_BACKGROUND = 9;
+  COLOR_OUTLINE = 10;
+}
+
+enum TextAlign {
+  TEXT_START = 0;
+  TEXT_CENTER = 1;
+  TEXT_END = 2;
+}
+
+enum IconSize {
+  ICON_SMALL = 0;
+  ICON_MEDIUM = 1;
+  ICON_LARGE = 2;
+}

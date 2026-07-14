@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package blueprint.layout;
+
+option java_package = "io.github.numq.blueprint.layout";
+option java_multiple_files = true;
+
+message Box {
+  Alignment content_alignment = 1;
+}
+
+message Column {
+  Arrangement vertical_arrangement = 1;
+  Alignment horizontal_alignment = 2;
+  float spacing = 3;
+}
+
+message Row {
+  Arrangement horizontal_arrangement = 1;
+  Alignment vertical_alignment = 2;
+  float spacing = 3;
+}
+
+message LazyColumn {
+  Arrangement vertical_arrangement = 1;
+  Alignment horizontal_alignment = 2;
+  float content_padding = 3;
+  bool reverse = 4;
+}
+
+message LazyRow {
+  Arrangement horizontal_arrangement = 1;
+  Alignment vertical_alignment = 2;
+  float content_padding = 3;
+  bool reverse = 4;
+}
+
+message Spacer {
+  float size = 1;
+}
+
+enum Arrangement {
+  START = 0;
+  CENTER = 1;
+  END = 2;
+  SPACE_BETWEEN = 3;
+  SPACE_AROUND = 4;
+  SPACE_EVENLY = 5;
+}
+
+enum Alignment {
+  ALIGN_START = 0;
+  ALIGN_CENTER = 1;
+  ALIGN_END = 2;
+  ALIGN_STRETCH = 3;
+}
