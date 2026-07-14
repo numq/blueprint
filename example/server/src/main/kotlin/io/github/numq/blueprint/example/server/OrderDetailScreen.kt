@@ -41,7 +41,7 @@ class OrderDetailScreen {
         Button(
             text = "← Back", variant = ButtonVariant.TEXT, onClickIntentId = "navigate_back", modifiers = {
                 padding(start = 8f, top = 8f)
-                alpha(0.8f)
+                alpha(.8f)
             })
     }
 

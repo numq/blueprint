@@ -35,13 +35,13 @@ class TrackingScreen {
                             horizontalArrangement = LayoutArrangement.START,
                             verticalAlignment = LayoutAlignment.ALIGN_START,
                             modifiers = { fillMaxWidth() }) {
-                            Column(modifiers = { weight(0.4f) }) {
+                            Column(modifiers = { weight(.4f) }) {
                                 TimelineCard(order)
                             }
 
                             Spacer(size = 16f)
 
-                            Column(modifiers = { weight(0.6f) }) {
+                            Column(modifiers = { weight(.6f) }) {
                                 StatusCard(order)
                                 Spacer(size = 16f)
                                 SupportButton(order.id)
@@ -57,7 +57,7 @@ class TrackingScreen {
         Button(
             text = "← Back", variant = ButtonVariant.TEXT, onClickIntentId = "navigate_back", modifiers = {
                 padding(start = 8f, top = 8f)
-                alpha(0.8f)
+                alpha(.8f)
             })
     }
 
@@ -102,7 +102,7 @@ class TrackingScreen {
             verticalAlignment = LayoutAlignment.ALIGN_CENTER,
             modifiers = {
                 padding(bottom = if (!isLast) 12f else 0f)
-                alpha(if (isCompleted) 1f else 0.5f)
+                alpha(if (isCompleted) 1f else .5f)
             }) {
             Row(
                 horizontalArrangement = LayoutArrangement.CENTER,
