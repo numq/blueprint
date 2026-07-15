@@ -5,9 +5,15 @@ Compose Multiplatform rendering.
 
 ## Overview
 
-Blueprint is a comprehensive SDUI framework that separates UI structure from client logic, allowing servers to define
-complete user interfaces as structured data. The client renders these blueprints using Compose Multiplatform, creating a
-fully dynamic UI experience across platforms.
+Blueprint is a Server-Driven UI (SDUI) framework for Kotlin Multiplatform
+that separates UI structure from client logic. The server defines complete user interfaces using a type-safe Kotlin DSL,
+while the client renders them with Compose Multiplatform.
+
+Blueprint follows a strict unidirectional data flow: the client renders server-defined UI,
+captures user actions as structured `Intent` objects, dispatches them to the server,
+and applies the resulting `Resolution` — a combination of state patches and declared side effects
+like navigation or snackbars. The server remains the single source of truth for both
+presentation and business logic.
 
 ### Key Features
 
@@ -37,6 +43,16 @@ Blueprint follows a clean separation of concerns across multiple modules:
 | `renderer-compose` | Compose Multiplatform renderer implementations for all built-in components                 |
 | `protocol`         | Protocol Buffers definitions for efficient serialization (optional)                        |
 
+## Design Principles
+
+Blueprint is built on three core principles that prioritize predictability and separation of concerns:
+
+- **Server as Single Source of Truth** — UI structure, state, and business logic live on the server
+- **Unidirectional Data Flow** — `Render → Intent → Resolution → Render` forms a strict request-response cycle, similar
+  in spirit to the Elm Architecture's `Model → View → Message → Update` loop but distributed across client and server
+- **Explicit Side Effects** — Navigation, snackbars, and dialogs are declared as typed `Effect` values, never executed
+  implicitly
+
 ## Quick Start
 
 ### Server Side: Building Blueprints
@@ -47,50 +63,42 @@ Use the Kotlin DSL to construct UI blueprints on your server:
 import io.github.numq.blueprint.dsl.*
 
 fun createUserProfileScreen(userId: String): Blueprint {
-    val user = userRepository.findById(userId) ?: return errorScreen()
+  val user = userRepository.findById(userId) ?: return errorScreen()
 
-    return blueprint("user_profile_$userId") {
-        metadata(
-            title = "User Profile",
-            description = "Profile page for ${user.name}"
+  return blueprint("user_profile_$userId") {
+    metadata(
+      title = "User Profile", description = "Profile page for ${user.name}"
+    )
+
+    state("user_name" to user.name, "is_verified" to user.verified.toString())
+
+    root {
+      Column(
+        verticalArrangement = LayoutArrangement.START, modifiers = {
+          padding(all = 24f)
+          background("#F8F9FA")
+        }) {
+        Text(
+          content = "Profile", size = TextSize.HEADLINE_LARGE, modifiers = { padding(bottom = 16f) })
+
+        Text(
+          content = bindString("user_name"), size = TextSize.TITLE_LARGE
         )
 
-        state("user_name" to user.name, "is_verified" to user.verified.toString())
+        Spacer(size = 24f)
 
-        root {
-            Column(
-                verticalArrangement = LayoutArrangement.START,
-                modifiers = {
-                    padding(all = 24f)
-                    background("#F8F9FA")
-                }
-            ) {
-                Text(
-                    content = "Profile",
-                    size = TextSize.HEADLINE_LARGE,
-                    modifiers = { padding(bottom = 16f) }
-                )
-
-                Text(
-                    content = bindString("user_name"),
-                    size = TextSize.TITLE_LARGE
-                )
-
-                Spacer(size = 24f)
-
-                Button(
-                    text = "Edit Profile",
-                    variant = ButtonVariant.FILLED,
-                    onClickIntentId = "edit_profile:$userId",
-                    modifiers = {
-                        fillMaxWidth()
-                        height(48f)
-                        cornerRadius(24f)
-                    }
-                )
-            }
-        }
+        Button(
+          text = "Edit Profile",
+          variant = ButtonVariant.FILLED,
+          onClickIntentId = "edit_profile:$userId",
+          modifiers = {
+            fillMaxWidth()
+            height(48f)
+            cornerRadius(24f)
+          })
+      }
     }
+  }
 }
 ```
 
@@ -98,35 +106,32 @@ fun createUserProfileScreen(userId: String): Blueprint {
 
 ```kotlin
 post("/action") {
-    val intent = call.receive<Intent>()
+  val intent = call.receive<Intent>()
 
-    val resolution = when {
-        intent.id.startsWith("edit_profile:") -> {
-            val userId = intent.id.removePrefix("edit_profile:")
-            Resolution(
-                effects = listOf(
-                    Effect.Navigation(
-                        screenId = "edit_profile",
-                        params = mapOf("id" to userId)
-                    )
-                )
-            )
-        }
-
-        intent.id == "delete_account" -> Resolution(
-            effects = listOf(
-                Effect.Dialog(
-                    title = "Confirm Deletion",
-                    message = "Are you sure you want to delete your account?"
-                ),
-                Effect.Snackbar(message = "Account deletion requested")
-            )
+  val resolution = when {
+    intent.id.startsWith("edit_profile:") -> {
+      val userId = intent.id.removePrefix("edit_profile:")
+      Resolution(
+        effects = listOf(
+          Effect.Navigation(
+            screenId = "edit_profile", params = mapOf("id" to userId)
+          )
         )
-
-        else -> Resolution()
+      )
     }
 
-    call.respond(resolution)
+    intent.id == "delete_account" -> Resolution(
+      effects = listOf(
+        Effect.Dialog(
+          title = "Confirm Deletion", message = "Are you sure you want to delete your account?"
+        ), Effect.Snackbar(message = "Account deletion requested")
+      )
+    )
+
+    else -> Resolution()
+  }
+
+  call.respond(resolution)
 }
 ```
 
@@ -135,51 +140,52 @@ post("/action") {
 ```kotlin
 @Composable
 fun MyApp(client: HttpClient) {
-    var blueprint by remember { mutableStateOf<Blueprint?>(null) }
-    val scope = rememberCoroutineScope()
+  var blueprint by remember { mutableStateOf<Blueprint?>(null) }
+  val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        val response = client.get("http://localhost:8080/screen/profile/123")
+  LaunchedEffect(Unit) {
+    val response = client.get("http://localhost:8080/screen/profile/123")
+    if (response.status.isSuccess()) {
+      blueprint = response.body()
+    }
+  }
+
+  val intentHandler = remember {
+    IntentHandler { intent ->
+      scope.launch {
+        val response = client.post("http://localhost:8080/action") {
+          contentType(ContentType.Application.Json)
+          setBody(intent)
+        }
+
         if (response.status.isSuccess()) {
-            blueprint = response.body()
-        }
-    }
+          val resolution = response.body<Resolution>()
 
-    val intentHandler = remember {
-        IntentHandler { intent ->
-            scope.launch {
-                val response = client.post("http://localhost:8080/action") {
-                    contentType(ContentType.Application.Json)
-                    setBody(intent)
-                }
-
-                if (response.status.isSuccess()) {
-                    val resolution = response.body<Resolution>()
-
-                    if (resolution.statePatches.isNotEmpty()) {
-                        blueprint = blueprint?.copy(
-                            state = blueprint!!.state + resolution.statePatches
-                        )
-                    }
-
-                    resolution.effects.forEach { effect ->
-                        handleEffect(effect)
-                    }
-                }
+          if (resolution.statePatches.isNotEmpty()) {
+            blueprint?.let { bp ->
+              blueprint = bp.copy(
+                state = bp.state + resolution.statePatches
+              )
             }
-        }
-    }
+          }
 
-    val renderer = remember { createDefaultBlueprintRegistry() }
-
-    MaterialTheme {
-        blueprint?.let { bp ->
-            renderer.render(
-                blueprint = bp,
-                intentHandler = intentHandler
-            )
+          resolution.effects.forEach { effect ->
+            handleEffect(effect) // Navigation, Snackbar, Dialog
+          }
         }
+      }
     }
+  }
+
+  val renderer = remember { createDefaultBlueprintRegistry() }
+
+  MaterialTheme {
+    blueprint?.let { bp ->
+      renderer.render(
+        blueprint = bp, intentHandler = intentHandler
+      )
+    }
+  }
 }
 ```
 
