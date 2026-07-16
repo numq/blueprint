@@ -336,20 +336,32 @@ val registry = createDefaultBlueprintRegistry().apply {
 }
 ```
 
-## Installation
+[//]: # (## Installation)
 
-```kotlin
-kotlin {
-    sourceSets {
-        commonMain.dependencies {
-            implementation("io.github.numq:blueprint-runtime:1.0.0")
-            implementation("io.github.numq:blueprint-dsl:1.0.0")
-            implementation("io.github.numq:blueprint-renderer:1.0.0")
-            implementation("io.github.numq:blueprint-renderer-compose:1.0.0")
-        }
-    }
-}
-```
+[//]: # ()
+[//]: # (```kotlin)
+
+[//]: # (kotlin {)
+
+[//]: # (    sourceSets {)
+
+[//]: # (        commonMain.dependencies {)
+
+[//]: # (            implementation&#40;"io.github.numq:blueprint-runtime:1.0.0"&#41;)
+
+[//]: # (            implementation&#40;"io.github.numq:blueprint-dsl:1.0.0"&#41;)
+
+[//]: # (            implementation&#40;"io.github.numq:blueprint-renderer:1.0.0"&#41;)
+
+[//]: # (            implementation&#40;"io.github.numq:blueprint-renderer-compose:1.0.0"&#41;)
+
+[//]: # (        })
+
+[//]: # (    })
+
+[//]: # (})
+
+[//]: # (```)
 
 ## Example Project
 
