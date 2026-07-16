@@ -1,5 +1,6 @@
 package io.github.numq.blueprint.runtime.action
 
+import io.github.numq.blueprint.runtime.Blueprint
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -8,9 +9,7 @@ sealed interface Effect {
     @Serializable
     @SerialName("navigation")
     data class Navigation(
-        val screenId: String,
-        val params: Map<String, String> = emptyMap(),
-        @SerialName("nav_type") val type: Type = Type.PUSH
+        val blueprint: Blueprint? = null, @SerialName("navigation_type") val type: Type = Type.PUSH
     ) : Effect {
         @Serializable
         enum class Type {

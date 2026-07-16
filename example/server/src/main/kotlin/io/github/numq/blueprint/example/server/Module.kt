@@ -27,36 +27,26 @@ fun Application.module() {
     val trackingScreen = TrackingScreen()
 
     routing {
-        get("/orders") {
-            call.respond(orderListScreen.create())
-        }
-
-        get("/orders/{id}") {
-            val orderId = call.parameters["id"] ?: ""
-
-            call.respond(orderDetailScreen.create(orderId))
-        }
-
-        get("/orders/{id}/tracking") {
-            val orderId = call.parameters["id"] ?: ""
-
-            call.respond(trackingScreen.create(orderId))
-        }
-
         post("/action") {
             val intent = call.receive<Intent>()
 
             println("Server received Intent: ${intent.id} of type ${intent.type}")
 
             val resolution = when {
+                intent.id == "start" -> Resolution(
+                    effects = listOf(
+                        Effect.Navigation(
+                            blueprint = orderListScreen.create(), type = Effect.Navigation.Type.REPLACE
+                        )
+                    )
+                )
+
                 intent.id.startsWith("navigate_order_detail:") -> {
                     val id = intent.id.removePrefix("navigate_order_detail:")
 
                     Resolution(
                         effects = listOf(
-                            Effect.Navigation(
-                                screenId = "order_detail", params = mapOf("id" to id)
-                            )
+                            Effect.Navigation(blueprint = orderDetailScreen.create(id))
                         )
                     )
                 }
@@ -64,10 +54,10 @@ fun Application.module() {
                 intent.id.startsWith("navigate_tracking:") -> {
                     val id = intent.id.removePrefix("navigate_tracking:")
 
-                    Resolution(effects = listOf(Effect.Navigation(screenId = "tracking", params = mapOf("id" to id))))
+                    Resolution(effects = listOf(Effect.Navigation(blueprint = trackingScreen.create(id))))
                 }
 
-                intent.id == "navigate_back" -> Resolution(effects = listOf(Effect.Navigation(screenId = "back")))
+                intent.id == "navigate_back" -> Resolution(effects = listOf(Effect.Navigation(type = Effect.Navigation.Type.POP)))
 
                 intent.id.startsWith("contact_support:") -> Resolution(effects = listOf(Effect.Snackbar(message = "Connecting you to support...")))
 

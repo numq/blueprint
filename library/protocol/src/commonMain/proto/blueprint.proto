@@ -143,9 +143,8 @@ message EffectTiming {
 }
 
 message NavigateEffect {
-  string screen_id = 1;
-  map<string, string> params = 2;
-  NavigationType navigation_type = 3;
+  Blueprint blueprint = 1;
+  NavigationType navigation_type = 2;
 }
 
 enum NavigationType {
