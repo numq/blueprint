@@ -1,11 +1,11 @@
 # Blueprint
 
-A Kotlin Multiplatform Server-Driven UI (SDUI) library that enables dynamic, server-controlled user interfaces with
+A Kotlin Multiplatform Backend-Driven UI (BDUI) / Server-Driven UI (SDUI) library that enables dynamic, server-controlled user interfaces with
 Compose Multiplatform rendering.
 
 ## Overview
 
-Blueprint is a Server-Driven UI (SDUI) framework for Kotlin Multiplatform
+Blueprint is a Backend-Driven UI (BDUI) / Server-Driven UI (SDUI) framework for Kotlin Multiplatform
 that separates UI structure from client logic. The server defines complete user interfaces using a type-safe Kotlin DSL,
 while the client renders them with Compose Multiplatform.
 
