@@ -1,6 +1,8 @@
 package io.github.numq.blueprint.runtime
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
 
 @Serializable
 data class Blueprint(
@@ -8,5 +10,7 @@ data class Blueprint(
     val version: String = "1.0",
     val metadata: BlueprintMetadata? = null,
     val state: Map<String, String> = emptyMap(),
-    val root: BlueprintNode
+    val root: BlueprintNode,
+    @SerialName("hash") val hash: String = "",
+    @SerialName("previous_hash") val previousHash: String? = null
 )

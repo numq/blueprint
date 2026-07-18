@@ -22,7 +22,10 @@ class OrderDetailScreen {
                 Column(
                     verticalArrangement = LayoutArrangement.START,
                     horizontalAlignment = LayoutAlignment.ALIGN_START,
-                    modifiers = { background(Palette.BACKGROUND) }) {
+                    modifiers = {
+                        background(Palette.BACKGROUND)
+                        fillMaxSize()
+                    }) {
                     TopBar()
 
                     Column(

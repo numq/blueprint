@@ -29,6 +29,9 @@ project(":example:client").projectDir = file("example/client")
 include(":example:server")
 project(":example:server").projectDir = file("example/server")
 
+include(":library:chain")
+project(":library:chain").projectDir = file("library/chain")
+
 include(":library:dsl")
 project(":library:dsl").projectDir = file("library/dsl")
 

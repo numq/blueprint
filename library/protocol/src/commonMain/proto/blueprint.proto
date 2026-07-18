@@ -16,6 +16,8 @@ message Blueprint {
   map<string, string> state = 3;
   Node root = 4;
   BlueprintMetadata metadata = 5;
+  string hash = 6;
+  optional string previous_hash = 7;
 }
 
 message BlueprintMetadata {
@@ -108,11 +110,12 @@ message Intent {
   string node_key = 3;
 
   oneof payload {
-    string text_value = 10;
-    bool bool_value = 11;
-    int32 int_value = 12;
-    float float_value = 13;
-    google.protobuf.Any custom_data = 14;
+    bool empty = 10;
+    string text_value = 11;
+    bool bool_value = 12;
+    int32 int_value = 13;
+    float float_value = 14;
+    google.protobuf.Any custom_data = 15;
   }
 
   google.protobuf.Timestamp timestamp = 5;
@@ -125,8 +128,15 @@ enum IntentPriority {
   CRITICAL = 2;
 }
 
+message StateDeltaBlock {
+  map<string, string> patches = 1;
+  string previous_hash = 2;
+  string new_hash = 3;
+  string signature = 4;
+}
+
 message Resolution {
-  map<string, string> state_patches = 1;
+  repeated StateDeltaBlock delta_blocks = 1;
   repeated Effect effects = 2;
   string target_node = 3;
 }

@@ -6,6 +6,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface IntentPayload {
     @Serializable
+    @SerialName("empty")
+    data object Empty : IntentPayload
+
+    @Serializable
     @SerialName("text")
     data class TextValue(val value: String) : IntentPayload
 

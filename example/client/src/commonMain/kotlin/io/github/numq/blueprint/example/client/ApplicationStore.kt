@@ -13,30 +13,32 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.protobuf.ProtoBuf
 
 class ApplicationStore(private val scope: CoroutineScope, private val client: HttpClient) {
+    @OptIn(ExperimentalSerializationApi::class)
+    private val protoBuf = ProtoBuf
+
     private val _state = MutableStateFlow(ApplicationState())
 
     val state = _state.asStateFlow()
 
     private fun handleResolution(resolution: Resolution) {
         _state.update { currentState ->
-            val newStack = currentState.backStack.toMutableList()
+            var newChain = currentState.chain
 
             resolution.effects.forEach { effect ->
                 when (effect) {
                     is Effect.Navigation -> {
-                        val blueprint = effect.blueprint
-
                         if (effect.type == Effect.Navigation.Type.POP) {
-                            if (newStack.size > 1) {
-                                newStack.removeLast()
+                            newChain = newChain.pop()
+                        } else if (effect.blueprint != null) {
+                            newChain = if (effect.type == Effect.Navigation.Type.REPLACE) {
+                                newChain.replace(effect.blueprint!!)
+                            } else {
+                                newChain.push(effect.blueprint!!)
                             }
-                        } else if (blueprint != null) {
-                            if (effect.type == Effect.Navigation.Type.REPLACE && newStack.isNotEmpty()) {
-                                newStack.removeLast()
-                            }
-                            newStack.add(blueprint)
                         }
                     }
 
@@ -46,26 +48,23 @@ class ApplicationStore(private val scope: CoroutineScope, private val client: Ht
                 }
             }
 
-            if (resolution.statePatches.isNotEmpty() && newStack.isNotEmpty()) {
-                val topIndex = newStack.lastIndex
+            newChain = newChain.applyDeltaBlocks(resolution.deltaBlocks)
 
-                val topBlueprint = newStack[topIndex]
-
-                newStack[topIndex] = topBlueprint.copy(state = topBlueprint.state + resolution.statePatches)
-            }
-
-            currentState.copy(backStack = newStack, isLoading = false)
+            currentState.copy(chain = newChain, isLoading = false)
         }
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     fun dispatch(intent: Intent) {
         scope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
             try {
+                val intentBytes = protoBuf.encodeToByteArray(Intent.serializer(), intent)
+
                 val response = client.post("http://localhost:8080/action") {
-                    contentType(ContentType.Application.Json)
-                    setBody(intent)
+                    contentType(ContentType.Application.ProtoBuf)
+                    setBody(intentBytes)
                 }
 
                 if (response.status.isSuccess()) {

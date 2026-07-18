@@ -8,7 +8,7 @@ data class Intent(
     val id: String,
     val type: String,
     val nodeKey: String,
-    val payload: IntentPayload? = null,
+    val payload: IntentPayload = IntentPayload.Empty,
     val timestampMs: Long = Clock.System.now().toEpochMilliseconds(),
     val priority: IntentPriority = IntentPriority.NORMAL
 )

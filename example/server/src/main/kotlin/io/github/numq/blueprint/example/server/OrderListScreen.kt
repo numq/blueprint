@@ -14,13 +14,17 @@ class OrderListScreen {
 
         return blueprint("order_list") {
             metadata(title = "My Orders", description = "Track all your orders in one place")
+
             state("total_orders" to orders.size.toString())
 
             root {
                 Column(
                     verticalArrangement = LayoutArrangement.START,
                     horizontalAlignment = LayoutAlignment.ALIGN_START,
-                    modifiers = { background(Palette.BACKGROUND) }) {
+                    modifiers = {
+                        background(Palette.BACKGROUND)
+                        fillMaxSize()
+                    }) {
                     Header(activeOrdersCount = orders.size)
                     OrderList(orders)
                 }

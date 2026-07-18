@@ -4,20 +4,19 @@ import io.github.numq.blueprint.runtime.action.Effect
 import io.github.numq.blueprint.runtime.action.Intent
 import io.github.numq.blueprint.runtime.action.Resolution
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
+import io.ktor.serialization.kotlinx.protobuf.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.protobuf.ProtoBuf
 
+@OptIn(ExperimentalSerializationApi::class)
 fun Application.module() {
     install(ContentNegotiation) {
-        json(Json {
-            prettyPrint = true
-            ignoreUnknownKeys = true
-        })
+        protobuf(ProtoBuf)
     }
 
     val orderListScreen = OrderListScreen()
@@ -28,50 +27,78 @@ fun Application.module() {
 
     routing {
         post("/action") {
-            val intent = call.receive<Intent>()
+            // session header Authorization (JWT)
+            val sessionId = call.request.headers["Session-Id"] ?: "anonymous_user_123"
 
+            val intent = call.receive<Intent>()
             println("Server received Intent: ${intent.id} of type ${intent.type}")
 
+            val currentHash = SessionManager.getCurrentHash(sessionId)
+
             val resolution = when {
-                intent.id == "start" -> Resolution(
-                    effects = listOf(
-                        Effect.Navigation(
-                            blueprint = orderListScreen.create(), type = Effect.Navigation.Type.REPLACE
+                intent.id == "start" -> {
+                    SessionManager.clearSession(sessionId)
+
+                    val blueprint = CryptoUtils.createSignedBlueprint(orderListScreen.create(), null)
+
+                    SessionManager.pushHash(sessionId, blueprint.hash)
+
+                    Resolution(
+                        effects = listOf(
+                            Effect.Navigation(
+                                blueprint = blueprint, type = Effect.Navigation.Type.REPLACE
+                            )
                         )
                     )
-                )
+                }
 
                 intent.id.startsWith("navigate_order_detail:") -> {
                     val id = intent.id.removePrefix("navigate_order_detail:")
 
-                    Resolution(
-                        effects = listOf(
-                            Effect.Navigation(blueprint = orderDetailScreen.create(id))
-                        )
-                    )
+                    val blueprint = CryptoUtils.createSignedBlueprint(orderDetailScreen.create(id), currentHash)
+
+                    SessionManager.pushHash(sessionId, blueprint.hash)
+
+                    Resolution(effects = listOf(Effect.Navigation(blueprint = blueprint)))
                 }
 
                 intent.id.startsWith("navigate_tracking:") -> {
                     val id = intent.id.removePrefix("navigate_tracking:")
 
-                    Resolution(effects = listOf(Effect.Navigation(blueprint = trackingScreen.create(id))))
+                    val blueprint = CryptoUtils.createSignedBlueprint(trackingScreen.create(id), currentHash)
+
+                    SessionManager.pushHash(sessionId, blueprint.hash)
+                    Resolution(effects = listOf(Effect.Navigation(blueprint = blueprint)))
                 }
 
-                intent.id == "navigate_back" -> Resolution(effects = listOf(Effect.Navigation(type = Effect.Navigation.Type.POP)))
+                intent.id == "navigate_back" -> {
+                    SessionManager.popHash(sessionId)
 
-                intent.id.startsWith("contact_support:") -> Resolution(effects = listOf(Effect.Snackbar(message = "Connecting you to support...")))
+                    Resolution(effects = listOf(Effect.Navigation(type = Effect.Navigation.Type.POP)))
+                }
+
+                intent.id.startsWith("contact_support:") -> {
+                    if (currentHash != null) {
+                        val patches = mapOf("support_status" to "connecting")
+
+                        val deltaBlock = CryptoUtils.createDeltaBlock(currentHash, patches)
+
+                        SessionManager.popHash(sessionId)
+
+                        SessionManager.pushHash(sessionId, deltaBlock.newHash)
+
+                        Resolution(
+                            deltaBlocks = listOf(deltaBlock),
+                            effects = listOf(Effect.Snackbar(message = "Connecting you to support..."))
+                        )
+                    } else Resolution()
+                }
 
                 else -> Resolution()
             }
 
             try {
-                val myJson = Json {
-                    encodeDefaults = true
-                }
-
-                val jsonString = myJson.encodeToString(resolution)
-
-                call.respondText(text = jsonString, contentType = ContentType.Application.Json)
+                call.respond(resolution)
             } catch (e: Exception) {
                 e.printStackTrace()
 
