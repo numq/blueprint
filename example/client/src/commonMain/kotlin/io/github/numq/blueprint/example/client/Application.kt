@@ -1,12 +1,13 @@
 package io.github.numq.blueprint.example.client
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,10 +18,6 @@ import io.ktor.client.*
 
 @Composable
 fun Application(client: HttpClient) {
-    var error by remember { mutableStateOf<String?>(null) }
-
-    var isLoading by remember { mutableStateOf(false) }
-
     val scope = rememberCoroutineScope()
 
     val store = remember { ApplicationStore(scope = scope, client = client) }
@@ -36,29 +33,41 @@ fun Application(client: HttpClient) {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
             when {
-                state.currentBlueprint == null && isLoading -> Box(
-                    Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+                state.error != null -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(text = "Error: ${state.error}", color = MaterialTheme.colorScheme.error)
+
+                        IconButton(onClick = {
+                            store.dispatch(Intent(id = "start", type = "SYSTEM", nodeKey = "root"))
+                        }) {
+                            Icon(Icons.Default.Refresh, null)
+                        }
+                    }
                 }
 
-                error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "Error: $error", color = MaterialTheme.colorScheme.error)
-                }
+                else -> when (val blueprint = state.currentBlueprint) {
+                    null -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
 
-                else -> Box(modifier = Modifier.fillMaxSize()) {
-                    state.currentBlueprint?.let { blueprint ->
+                    else -> Box(modifier = Modifier.fillMaxSize()) {
                         renderer.render(blueprint = blueprint, intentHandler = {
                             store.dispatch(it)
                         })
-                    }
 
-                    if (isLoading && state.currentBlueprint != null) {
-                        Box(
-                            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
+                        if (state.isLoading) {
+                            Box(
+                                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = .1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
                         }
                     }
                 }
