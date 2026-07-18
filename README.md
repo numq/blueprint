@@ -1,385 +1,535 @@
 # Blueprint
 
-A Kotlin Multiplatform Backend-Driven UI (BDUI) / Server-Driven UI (SDUI) library that enables dynamic, server-controlled user interfaces with
-Compose Multiplatform rendering.
+**Server-Driven UI (SDUI) / Backend-Driven UI (BDUI) framework for Kotlin Multiplatform (KMP).**
 
-## Overview
+Blueprint is an enterprise-grade framework that shifts UI rendering control to the backend. Instead of hardcoding
+screens in your mobile or desktop app, you describe the entire UI tree—layout, components, styling, and interactions—as
+serializable data models. The server delivers these blueprints at runtime, and the client renders them natively using
+Jetpack Compose.
 
-Blueprint is a Backend-Driven UI (BDUI) / Server-Driven UI (SDUI) framework for Kotlin Multiplatform
-that separates UI structure from client logic. The server defines complete user interfaces using a type-safe Kotlin DSL,
-while the client renders them with Compose Multiplatform.
+This enables instant UI updates without app store releases, centralized business logic, and a cryptographically
+verifiable chain of state for zero-trust architectures.
 
-Blueprint follows a strict unidirectional data flow: the client renders server-defined UI,
-captures user actions as structured `Intent` objects, dispatches them to the server,
-and applies the resulting `Resolution` — a combination of state patches and declared side effects
-like navigation or snackbars. The server remains the single source of truth for both
-presentation and business logic.
+---
 
-### Key Features
+## Table of Contents
 
-- **Server-Driven Architecture** — Define your entire UI structure on the server and stream it to clients as structured
-  data
-- **Type-Safe DSL** — Build blueprints programmatically on the server using a Kotlin DSL with compile-time safety
-- **Compose Multiplatform Rendering** — Render server-defined UIs natively on Android, iOS, Desktop, and Web
-- **Bidirectional Communication** — Send user interactions (intents) to the server and receive UI updates (state
-  patches) in response
-- **Dynamic State Binding** — Bind UI components to server-managed state that updates in real-time
-- **Material 3 Components** — Built-in support for Material Design 3 components including buttons, cards, text fields,
-  and more
-- **Layout System** — Full layout primitives including Row, Column, Box, LazyColumn, and LazyRow
-- **Navigation Effects** — Server-controlled navigation with push, replace, and pop semantics
-- **Pluggable Renderers** — Extend the rendering system with custom components and custom rendering logic
-- **Protocol Buffers Support** — Wire protocol definitions for efficient serialization (optional)
+- [Architecture Overview](#architecture-overview)
+- [Module Structure](#module-structure)
+- [Key Concepts](#key-concepts)
+    - [Blueprint & BlueprintNode](#blueprint--blueprintnode)
+    - [Dynamic Values (State Binding)](#dynamic-values-state-binding)
+    - [Component Payloads](#component-payloads)
+    - [Modifiers](#modifiers)
+    - [Intents & Effects](#intents--effects)
+    - [State Delta Blocks](#state-delta-blocks)
+    - [BlueprintChain (Zero-Trust)](#blueprintchain-zero-trust)
+- [Server-Side Usage](#server-side-usage)
+    - [Creating a Blueprint (Kotlin DSL)](#creating-a-blueprint-kotlin-dsl)
+    - [Handling Intents & Generating Resolutions](#handling-intents--generating-resolutions)
+    - [ProtoBuf Serialization](#protobuf-serialization)
+- [Client-Side Usage](#client-side-usage)
+    - [Rendering a Blueprint (Compose)](#rendering-a-blueprint-compose)
+    - [Dispatching Intents](#dispatching-intents)
+    - [Managing the Chain State](#managing-the-chain-state)
+- [Extensibility](#extensibility)
+    - [Custom Components & Renderers](#custom-components--renderers)
+- [Real-World Example](#real-world-example)
+- [Getting Started](#getting-started-tbd-)
 
-## Architecture
+---
 
-Blueprint follows a clean separation of concerns across multiple modules:
+## Architecture Overview
 
-| Module             | Description                                                                                |
-|--------------------|--------------------------------------------------------------------------------------------|
-| `runtime`          | Core data models: `Blueprint`, `BlueprintNode`, `Intent`, `Resolution`, component payloads |
-| `dsl`              | Server-side Kotlin DSL for building blueprints programmatically                            |
-| `renderer`         | Abstract rendering interfaces and Composable context providers                             |
-| `renderer-compose` | Compose Multiplatform renderer implementations for all built-in components                 |
-| `protocol`         | Protocol Buffers definitions for efficient serialization (optional)                        |
-
-## Design Principles
-
-Blueprint is built on three core principles that prioritize predictability and separation of concerns:
-
-- **Server as Single Source of Truth** — UI structure, state, and business logic live on the server
-- **Unidirectional Data Flow** — `Render → Intent → Resolution → Render` forms a strict request-response cycle, similar
-  in spirit to the Elm Architecture's `Model → View → Message → Update` loop but distributed across client and server
-- **Explicit Side Effects** — Navigation, snackbars, and dialogs are declared as typed `Effect` values, never executed
-  implicitly
-
-## Quick Start
-
-### Server Side: Building Blueprints
-
-Use the Kotlin DSL to construct UI blueprints on your server:
-
-```kotlin
-import io.github.numq.blueprint.dsl.*
-
-fun createUserProfileScreen(userId: String): Blueprint {
-  val user = userRepository.findById(userId) ?: return errorScreen()
-
-  return blueprint("user_profile_$userId") {
-    metadata(
-      title = "User Profile", description = "Profile page for ${user.name}"
-    )
-
-    state("user_name" to user.name, "is_verified" to user.verified.toString())
-
-    root {
-      Column(
-        verticalArrangement = LayoutArrangement.START, modifiers = {
-          padding(all = 24f)
-          background("#F8F9FA")
-        }) {
-        Text(
-          content = "Profile", size = TextSize.HEADLINE_LARGE, modifiers = { padding(bottom = 16f) })
-
-        Text(
-          content = bindString("user_name"), size = TextSize.TITLE_LARGE
-        )
-
-        Spacer(size = 24f)
-
-        Button(
-          text = "Edit Profile",
-          variant = ButtonVariant.FILLED,
-          onClickIntentId = "edit_profile:$userId",
-          modifiers = {
-            fillMaxWidth()
-            height(48f)
-            cornerRadius(24f)
-          })
-      }
-    }
-  }
-}
+```
+┌─────────────────────────────────────────────────────────┐
+│                        SERVER                           │
+│  ┌───────────┐  ┌──────────────┐  ┌──────────────────┐ │
+│  │  Kotlin   │  │   Business   │  │   Cryptographic  │ │
+│  │  DSL      │──▶   Logic      │──▶   Utilities      │ │
+│  │  (UI Tree)│  │  (Resolve)   │  │  (Hash & Sign)   │ │
+│  └───────────┘  └──────────────┘  └──────────────────┘ │
+│                        │                                │
+│               Resolution (JSON/ProtoBuf)                │
+└────────────────────────┼───────────────────────────────┘
+                         │  HTTP / gRPC / WebSocket
+┌────────────────────────┼───────────────────────────────┐
+│                        CLIENT                           │
+│  ┌─────────────┐  ┌────┴──────────┐  ┌───────────────┐ │
+│  │  Blueprint  │  │  Compose      │  │  Blueprint    │ │
+│  │  Chain      │◀─│  Renderer     │──▶  Registry     │ │
+│  │ (State)     │  │  (Native UI)  │  │  (Extensible) │ │
+│  └─────────────┘  └───────────────┘  └───────────────┘ │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Server Side: Handling Intents
+The server owns the UI definition and state. The client is a thin rendering layer that translates data into native
+components and sends user interactions back as intents.
 
-```kotlin
-post("/action") {
-  val intent = call.receive<Intent>()
+---
 
-  val resolution = when {
-    intent.id.startsWith("edit_profile:") -> {
-      val userId = intent.id.removePrefix("edit_profile:")
-      Resolution(
-        effects = listOf(
-          Effect.Navigation(
-            screenId = "edit_profile", params = mapOf("id" to userId)
-          )
-        )
-      )
-    }
+## Module Structure
 
-    intent.id == "delete_account" -> Resolution(
-      effects = listOf(
-        Effect.Dialog(
-          title = "Confirm Deletion", message = "Are you sure you want to delete your account?"
-        ), Effect.Snackbar(message = "Account deletion requested")
-      )
-    )
+| Module             | Description                                                                                                                          |
+|--------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `runtime`          | Core data models: `Blueprint`, `BlueprintNode`, component payloads, `Intent`, `Effect`, `Dynamic*` types. Pure Kotlin Multiplatform. |
+| `dsl`              | Type-safe Kotlin DSL for building UI trees on the server side.                                                                       |
+| `renderer`         | Abstract rendering interface and `CompositionLocal` providers (state, intent handler, error handler).                                |
+| `renderer-compose` | Jetpack Compose implementation: renders all layout and Material components from blueprints.                                          |
+| `chain`            | Cryptographic `BlueprintChain` for zero-trust state management with hash verification and delta patching.                            |
+| `protocol`         | ProtoBuf schema definitions for all models.                                                                                          |
 
-    else -> Resolution()
-  }
+---
 
-  call.respond(resolution)
-}
-```
+## Key Concepts
 
-### Client Side: Rendering Blueprints
+### Blueprint & BlueprintNode
 
-```kotlin
-@Composable
-fun MyApp(client: HttpClient) {
-  var blueprint by remember { mutableStateOf<Blueprint?>(null) }
-  val scope = rememberCoroutineScope()
-
-  LaunchedEffect(Unit) {
-    val response = client.get("http://localhost:8080/screen/profile/123")
-    if (response.status.isSuccess()) {
-      blueprint = response.body()
-    }
-  }
-
-  val intentHandler = remember {
-    IntentHandler { intent ->
-      scope.launch {
-        val response = client.post("http://localhost:8080/action") {
-          contentType(ContentType.Application.Json)
-          setBody(intent)
-        }
-
-        if (response.status.isSuccess()) {
-          val resolution = response.body<Resolution>()
-
-          if (resolution.statePatches.isNotEmpty()) {
-            blueprint?.let { bp ->
-              blueprint = bp.copy(
-                state = bp.state + resolution.statePatches
-              )
-            }
-          }
-
-          resolution.effects.forEach { effect ->
-            handleEffect(effect) // Navigation, Snackbar, Dialog
-          }
-        }
-      }
-    }
-  }
-
-  val renderer = remember { createDefaultBlueprintRegistry() }
-
-  MaterialTheme {
-    blueprint?.let { bp ->
-      renderer.render(
-        blueprint = bp, intentHandler = intentHandler
-      )
-    }
-  }
-}
-```
-
-## Component Reference
-
-### Layout Components
-
-| Component    | Description                                   | Key Properties                                          |
-|--------------|-----------------------------------------------|---------------------------------------------------------|
-| `Box`        | Basic container with single content alignment | `contentAlignment`                                      |
-| `Column`     | Vertical linear layout                        | `verticalArrangement`, `horizontalAlignment`, `spacing` |
-| `Row`        | Horizontal linear layout                      | `horizontalArrangement`, `verticalAlignment`, `spacing` |
-| `LazyColumn` | Vertical scrolling list                       | `contentPadding`, `onLoadMoreIntentId`                  |
-| `LazyRow`    | Horizontal scrolling list                     | `contentPadding`, `reversed`                            |
-| `Spacer`     | Empty space                                   | `size`                                                  |
-
-### Material Components
-
-| Component           | Description              | Key Properties                                        |
-|---------------------|--------------------------|-------------------------------------------------------|
-| `Text`              | Text display             | `content`, `size`, `color`, `align`, `maxLines`       |
-| `Button`            | Interactive button       | `text`, `variant`, `enabled`, `onClickIntentId`       |
-| `Card`              | Container with elevation | `variant`, `onClickIntentId`                          |
-| `TextField`         | Text input field         | `value`, `placeholder`, `enabled`, `onChangeIntentId` |
-| `Checkbox`          | Boolean toggle           | `checked`, `enabled`, `onChangeIntentId`              |
-| `Switch`            | Toggle switch            | `checked`, `enabled`, `onChangeIntentId`              |
-| `ProgressIndicator` | Progress display         | `isLinear`, `progress`                                |
-| `Image`             | Image display            | `url`, `contentDescription`                           |
-| `Icon`              | Icon display             | `name`, `tint`, `size`                                |
-
-### Modifiers
-
-| Modifier                                         | Description                          |
-|--------------------------------------------------|--------------------------------------|
-| `padding`                                        | Add padding (directional or uniform) |
-| `width` / `height`                               | Fixed dimensions                     |
-| `size`                                           | Fixed width and height               |
-| `background`                                     | Background color (hex string)        |
-| `elevation`                                      | Shadow elevation                     |
-| `cornerRadius`                                   | Rounded corners                      |
-| `alpha`                                          | Opacity (0.0 to 1.0)                 |
-| `weight`                                         | Weight in linear layouts             |
-| `fillMaxWidth` / `fillMaxHeight` / `fillMaxSize` | Fill available space                 |
-
-## Dynamic State Binding
-
-Blueprint supports binding component properties to server-managed state:
-
-```kotlin
-state("greeting" to "Hello, World!", "is_loading" to "true")
-
-Text(content = bindString("greeting"))
-
-Button(enabled = bindBool("is_loading"))
-```
-
-When the server returns a `Resolution` with `statePatches`:
-
-```kotlin
-Resolution(
-    statePatches = mapOf(
-        "greeting" to "Updated text!",
-        "is_loading" to "false"
-    )
-)
-```
-
-## Effects System
-
-### Navigation Effects
-
-```kotlin
-Effect.Navigation(
-    screenId = "profile",
-    params = mapOf("id" to "123"),
-    type = Effect.Navigation.Type.PUSH
-)
-```
-
-| Navigation Type | Behavior                        |
-|-----------------|---------------------------------|
-| `PUSH`          | Add screen to navigation stack  |
-| `REPLACE`       | Replace current screen          |
-| `POP`           | Remove current screen (go back) |
-
-### Snackbar Effects
-
-```kotlin
-Effect.Snackbar(
-    message = "Item saved successfully",
-    isError = false,
-    durationMs = 3000
-)
-```
-
-### Dialog Effects
-
-```kotlin
-Effect.Dialog(
-    title = "Confirm Action",
-    message = "Are you sure?",
-    actions = listOf(
-        Effect.Dialog.DialogAction(
-            label = "Yes",
-            intent = Intent(id = "confirm_action", type = "DIALOG_ACTION", nodeKey = ""),
-            isPrimary = true
-        )
-    )
-)
-```
-
-## Custom Components
-
-### 1. Define a Custom Payload
+A `Blueprint` is the top-level container describing a screen:
 
 ```kotlin
 @Serializable
-data class CustomVideoPayload(
-    val url: String,
-    val autoplay: Boolean = false
-) : ComponentPayload
+data class Blueprint(
+    val id: String,
+    val version: String = "1.0",
+    val metadata: BlueprintMetadata? = null,
+    val state: Map<String, String> = emptyMap(),
+    val root: BlueprintNode,
+    val hash: String = "",
+    val previousHash: String? = null
+)
 ```
 
-### 2. Create a Custom Renderer
+The UI tree is built from recursive `BlueprintNode`s:
 
 ```kotlin
-object VideoRenderer : ComponentRenderer<CustomVideoPayload> {
-    @Composable
-    override fun render(
-        node: BlueprintNode,
-        payload: CustomVideoPayload,
-        renderer: BlueprintRenderer
-    ) {
-        VideoPlayer(
-            url = payload.url,
-            autoplay = payload.autoplay,
-            modifier = node.modifiers.toComposeModifier()
-        )
+@Serializable
+data class BlueprintNode(
+    val key: String,
+    val payload: ComponentPayload,
+    val modifiers: List<NodeModifier> = emptyList(),
+    val children: List<BlueprintNode> = emptyList(),
+    val slots: Map<String, BlueprintNode> = emptyMap()
+)
+```
+
+Nodes can be traversed and searched:
+
+- `findNodeByKey(key)` — recursive search by key
+- `findNodesByPayloadType<T>()` — filter all nodes by payload type
+
+### Dynamic Values (State Binding)
+
+Components can bind to server-provided state without hardcoding values. Three sealed types bridge static literals and
+dynamic state keys:
+
+```kotlin
+// DynamicString, DynamicBool, DynamicFloat
+sealed interface DynamicString {
+    data class Literal(val value: String) : DynamicString
+    data class StateKey(val key: String) : DynamicString
+}
+```
+
+**Resolution on the client:**
+
+```kotlin
+fun DynamicString.resolve(state: Map<String, String>): String = when (this) {
+    is Literal -> value
+    is StateKey -> state[key] ?: ""
+}
+```
+
+This allows the server to control text, booleans, and floats remotely by simply updating the `state` map.
+
+### Component Payloads
+
+All UI components are described as serializable data classes implementing `ComponentPayload`.
+
+**Layout Components (`LayoutPayload`):** `Box`, `Column`, `Row`, `Spacer`, `LazyColumn`, `LazyRow`
+
+**Material Components (`MaterialPayload`):** `Text`, `Button`, `Card`, `Icon`, `TextField`, `Checkbox`, `Switch`,
+`ProgressIndicator`, `Image`
+
+Example:
+
+```kotlin
+MaterialPayload.Text(
+    content = DynamicString.StateKey("welcome_message"),
+    size = TextSize.HEADLINE_MEDIUM,
+    color = ColorRole.PRIMARY
+)
+```
+
+### Modifiers
+
+Styling and layout modifiers mirror Compose's modifier system:
+
+```kotlin
+sealed interface NodeModifier {
+    data class Padding(val start: Float, val top: Float, val end: Float, val bottom: Float) : NodeModifier
+    data class Background(val colorHex: String) : NodeModifier
+    data class CornerRadius(val radius: Float) : NodeModifier
+    data class Alpha(val alpha: Float) : NodeModifier
+    data class Weight(val weight: Float) : NodeModifier
+    data class FillMaxWidth(val fraction: Float) : NodeModifier
+    // ... and more
+}
+```
+
+### Intents & Effects
+
+**Intents** represent user actions sent from the client to the server:
+
+```kotlin
+data class Intent(
+    val id: String,
+    val type: String,
+    val nodeKey: String,
+    val payload: IntentPayload = IntentPayload.Empty,
+    val timestampMs: Long,
+    val priority: IntentPriority = NORMAL
+)
+```
+
+**Effects** are server instructions for the client:
+
+```kotlin
+sealed interface Effect {
+    data class Navigation(val blueprint: Blueprint?, val type: Type) : Effect
+    data class Snackbar(val message: String, val isError: Boolean, ...) : Effect
+    data class Dialog(val title: String, val message: String, ...) : Effect
+}
+```
+
+### State Delta Blocks
+
+Instead of sending entire blueprints for every state change, the server can send minimal patches:
+
+```kotlin
+data class StateDeltaBlock(
+    val patches: Map<String, String>,
+    val previousHash: String,
+    val newHash: String,
+    val signature: String = ""
+)
+```
+
+The `Resolution` combines deltas and effects:
+
+```kotlin
+data class Resolution(
+    val deltaBlocks: List<StateDeltaBlock> = emptyList(),
+    val effects: List<Effect> = emptyList(),
+    val targetNode: String? = null
+)
+```
+
+### BlueprintChain (Zero-Trust)
+
+The `BlueprintChain` on the client maintains a cryptographic history of screens:
+
+```kotlin
+data class BlueprintChain(
+    val links: List<Blueprint> = emptyList(),
+    val lastAction: Action = IDLE,
+    val strictMode: Boolean = true,
+    val verifier: SignatureVerifier? = null
+)
+```
+
+**Enterprise security features:**
+
+- **Hash chaining:** Each blueprint includes a `hash` of its content and a `previousHash` linking to the previous
+  screen.
+- **Man-in-the-middle detection:** `push()` and `replace()` verify that the incoming blueprint's `previousHash` matches
+  the current state hash.
+- **State delta verification:** `applyDeltaBlocks()` verifies that delta patches target the correct state hash.
+- **Cryptographic signatures:** Delta blocks can be RSA-signed by the server and verified client-side via
+  `SignatureVerifier`.
+
+```kotlin
+// Server side
+val deltaBlock = CryptoUtils.createDeltaBlock(currentHash, patches)
+// deltaBlock.signature contains an RSA SHA256withRSA signature
+
+// Client side
+val chain = BlueprintChain(
+    strictMode = true,
+    verifier = object : SignatureVerifier {
+        override fun verify(payload: String, signatureBase64: String): Boolean {
+            // Verify using server's public key
+        }
+    }
+)
+```
+
+---
+
+## Server-Side Usage
+
+### Creating a Blueprint (Kotlin DSL)
+
+The DSL module provides a type-safe builder that feels like Compose:
+
+```kotlin
+val screen = blueprint("order_list") {
+    metadata(title = "My Orders", description = "Track all your orders")
+    state("total_orders" to "5", "username" to "John")
+
+    root {
+        Column(
+            verticalArrangement = Arrangement.START,
+            horizontalAlignment = Alignment.ALIGN_START,
+            modifiers = {
+                background("#F8F9FA")
+                fillMaxSize()
+            }
+        ) {
+            Text(
+                content = bindString("username"),
+                size = TextSize.HEADLINE_LARGE
+            )
+
+            LazyColumn(
+                verticalArrangement = Arrangement.START,
+                contentPadding = 24f
+            ) {
+                Card(
+                    variant = CardVariant.FILLED,
+                    onClickIntentId = "navigate_detail:1",
+                    modifiers = {
+                        cornerRadius(20f)
+                        padding(bottom = 16f)
+                    }
+                ) {
+                    Text(content = "Order #1", size = TextSize.TITLE_MEDIUM)
+                }
+            }
+
+            Button(
+                text = "Refresh",
+                variant = ButtonVariant.FILLED,
+                onClickIntentId = "refresh_orders"
+            )
+        }
     }
 }
 ```
 
-### 3. Register the Custom Renderer
+### Handling Intents & Generating Resolutions
 
 ```kotlin
-val registry = createDefaultBlueprintRegistry().apply {
-    register(CustomVideoPayload::class, VideoRenderer)
+when (intent.id) {
+    "start" -> {
+        val blueprint = CryptoUtils.createSignedBlueprint(screen, null)
+        Resolution(
+            effects = listOf(Effect.Navigation(blueprint, Effect.Navigation.Type.REPLACE))
+        )
+    }
+    "refresh_orders" -> {
+        val patches = mapOf("total_orders" to "10")
+        val delta = CryptoUtils.createDeltaBlock(currentHash, patches)
+        Resolution(deltaBlocks = listOf(delta))
+    }
+    "navigate_detail:1" -> {
+        val detailScreen = createDetailScreen()
+        val blueprint = CryptoUtils.createSignedBlueprint(detailScreen, currentHash)
+        Resolution(effects = listOf(Effect.Navigation(blueprint)))
+    }
 }
 ```
 
-[//]: # (## Installation)
+### ProtoBuf Serialization
 
-[//]: # ()
-[//]: # (```kotlin)
+For production, use ProtoBuf serialization (schemas in `protocol/`) for compact, high-performance wire format. JSON with
+`kotlinx.serialization` is also supported for debugging.
 
-[//]: # (kotlin {)
+---
 
-[//]: # (    sourceSets {)
+## Client-Side Usage
 
-[//]: # (        commonMain.dependencies {)
+### Rendering a Blueprint (Compose)
 
-[//]: # (            implementation&#40;"io.github.numq:blueprint-runtime:1.0.0"&#41;)
+```kotlin
+@Composable
+fun Application(client: HttpClient) {
+    val renderer = remember { createDefaultBlueprintRegistry() }
+    val state by store.state.collectAsState()
 
-[//]: # (            implementation&#40;"io.github.numq:blueprint-dsl:1.0.0"&#41;)
-
-[//]: # (            implementation&#40;"io.github.numq:blueprint-renderer:1.0.0"&#41;)
-
-[//]: # (            implementation&#40;"io.github.numq:blueprint-renderer-compose:1.0.0"&#41;)
-
-[//]: # (        })
-
-[//]: # (    })
-
-[//]: # (})
-
-[//]: # (```)
-
-## Example Project
-
-The repository includes a complete example demonstrating:
-
-- **Server**: Ktor-based server with three screens (Order List, Order Details, Tracking)
-- **Client**: Desktop Compose Multiplatform application
-- **Features**: Server-driven navigation, state management, dynamic content, and error handling
-
-### Running the Example
-
-```bash
-cd example/server
-./gradlew run
-
-cd example/client
-./gradlew run
+    MaterialTheme {
+        when (val blueprint = state.chain.current) {
+            null -> LoadingScreen()
+            else -> {
+                renderer.render(
+                    blueprint = blueprint,
+                    intentHandler = { intent -> store.dispatch(intent) }
+                )
+            }
+        }
+    }
+}
 ```
+
+### Dispatching Intents
+
+The renderer automatically captures user interactions (button clicks, text changes, checkbox toggles) and calls
+`intentHandler.onIntent(intent)`.
+
+For lazy lists with infinite scroll:
+
+```kotlin
+LazyColumn(
+    onLoadMoreIntentId = "load_more",
+    loadMoreThreshold = 3
+) {
+    // items
+}
+// When the user scrolls near the end, an Intent is fired automatically.
+```
+
+### Managing the Chain State
+
+```kotlin
+class ApplicationStore {
+    private fun handleResolution(resolution: Resolution) {
+        _state.update { currentState ->
+            var chain = currentState.chain
+
+            // Apply navigation effects
+            resolution.effects.forEach { effect ->
+                when (effect) {
+                    is Effect.Navigation.PUSH -> chain = chain.push(effect.blueprint!!)
+                    is Effect.Navigation.POP -> chain = chain.pop()
+                    is Effect.Navigation.REPLACE -> chain = chain.replace(effect.blueprint!!)
+                    is Effect.Snackbar -> showSnackbar(effect)
+                    is Effect.Dialog -> showDialog(effect)
+                }
+            }
+
+            // Apply state delta patches (with hash verification)
+            chain = chain.applyDeltaBlocks(resolution.deltaBlocks)
+
+            currentState.copy(chain = chain, isLoading = false)
+        }
+    }
+}
+```
+
+---
+
+## Extensibility
+
+### Custom Components & Renderers
+
+1. **Define a custom payload:**
+
+```kotlin
+@Serializable
+@SerialName("custom.WeatherCard")
+data class WeatherCard(
+    val temperature: DynamicFloat,
+    val condition: DynamicString
+) : ComponentPayload
+```
+
+2. **Create a renderer:**
+
+```kotlin
+object WeatherCardRenderer : ComponentRenderer<WeatherCard> {
+    @Composable
+    override fun render(node: BlueprintNode, payload: WeatherCard, renderer: BlueprintRenderer) {
+        val state = LocalBlueprintState.current
+        Card(modifier = node.modifiers.toComposeModifier()) {
+            Column {
+                Text("${payload.temperature.resolve(state)}°C")
+                Text(payload.condition.resolve(state))
+            }
+        }
+    }
+}
+```
+
+3. **Register the renderer:**
+
+```kotlin
+val registry = createDefaultBlueprintRegistry()
+registry.register(WeatherCard::class, WeatherCardRenderer)
+```
+
+4. **Use in the DSL:**
+
+```kotlin
+// Add extension function
+fun BlueprintDsl.WeatherCard(temperature: DynamicFloat, condition: DynamicString, ...) {
+    node(payload = WeatherCard(temperature, condition), ...)
+}
+```
+
+---
+
+## Real-World Example
+
+A complete order tracking application is included in the `example/` directory:
+
+- **Server (Ktor):** Generates blueprints with cryptographic hashes, handles intents, returns resolutions.
+- **Client (Compose Desktop):** Renders blueprints, manages the `BlueprintChain`, dispatches user intents.
+
+```
+example/
+├── server/
+│   ├── Application.kt          # Ktor server entry point
+│   ├── Module.kt               # Intent routing & session management
+│   ├── CryptoUtils.kt          # SHA-256 hashing & RSA signing
+│   ├── SessionManager.kt       # Per-user hash chain storage
+│   ├── OrderListScreen.kt      # DSL-built list screen
+│   ├── OrderDetailScreen.kt    # DSL-built detail screen
+│   ├── TrackingScreen.kt       # DSL-built tracking screen
+│   └── OrderRepository.kt      # Mock data
+└── client/
+    ├── Application.kt          # Compose UI entry point
+    ├── ApplicationStore.kt     # Chain state management
+    └── Main.kt                 # Desktop window launcher
+```
+
+---
+
+## Getting Started (TBD 🚧)
+
+**Gradle dependency coordinates** (add to your `build.gradle.kts`):
+
+```kotlin
+// Runtime models (shared across server and client)
+implementation("io.github.numq.blueprint:runtime:1.0.0")
+
+// DSL for building blueprints (server-side)
+implementation("io.github.numq.blueprint:dsl:1.0.0")
+
+// Compose renderer (client-side)
+implementation("io.github.numq.blueprint:renderer-compose:1.0.0")
+
+// Cryptographic chain (client-side)
+implementation("io.github.numq.blueprint:chain:1.0.0")
+```
+
+**Minimal example:**
+
+```kotlin
+// Server
+val myScreen = blueprint("home") {
+    root {
+        Text(content = "Hello, World!")
+    }
+}
+
+// Client
+renderer.render(
+    blueprint = myScreen,
+    intentHandler = { /* send to server */ }
+)
+```
+
+---
 
 ## License
 
