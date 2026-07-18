@@ -2,6 +2,8 @@
 
 **Server-Driven UI (SDUI) / Backend-Driven UI (BDUI) framework for Kotlin Multiplatform (KMP).**
 
+![Blueprint demo GIF](./media/demo.gif)
+
 Blueprint is an enterprise-grade framework that shifts UI rendering control to the backend. Instead of hardcoding
 screens in your mobile or desktop app, you describe the entire UI tree—layout, components, styling, and interactions—as
 serializable data models. The server delivers these blueprints at runtime, and the client renders them natively using
