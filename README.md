@@ -43,26 +43,31 @@ verifiable chain of state for zero-trust architectures.
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                        SERVER                           │
-│  ┌───────────┐  ┌──────────────┐  ┌──────────────────┐ │
-│  │  Kotlin   │  │   Business   │  │   Cryptographic  │ │
-│  │  DSL      │──▶   Logic      │──▶   Utilities      │ │
-│  │  (UI Tree)│  │  (Resolve)   │  │  (Hash & Sign)   │ │
-│  └───────────┘  └──────────────┘  └──────────────────┘ │
-│                        │                                │
-│               Resolution (JSON/ProtoBuf)                │
-└────────────────────────┼───────────────────────────────┘
-                         │  HTTP / gRPC / WebSocket
-┌────────────────────────┼───────────────────────────────┐
-│                        CLIENT                           │
-│  ┌─────────────┐  ┌────┴──────────┐  ┌───────────────┐ │
-│  │  Blueprint  │  │  Compose      │  │  Blueprint    │ │
-│  │  Chain      │◀─│  Renderer     │──▶  Registry     │ │
-│  │ (State)     │  │  (Native UI)  │  │  (Extensible) │ │
-│  └─────────────┘  └───────────────┘  └───────────────┘ │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Server [SERVER]
+        subgraph ServerCore [Core Components]
+            KotlinDSL[Kotlin DSL<br>UI Tree] --> BusinessLogic[Business Logic<br>Resolve]
+            BusinessLogic --> CryptoUtils[Cryptographic Utilities<br>Hash & Sign]
+        end
+        
+        ServerCore --> Resolution[Resolution<br>JSON / ProtoBuf]
+    end
+
+    Resolution -->|HTTP / gRPC / WebSocket| ClientTransport
+
+    subgraph Client [CLIENT]
+        ClientTransport[Transport Layer] --> ComposeRenderer[Compose Renderer<br>Native UI]
+        
+        ComposeRenderer <--> BlueprintChain[Blueprint Chain<br>State]
+        ComposeRenderer --> BlueprintRegistry[Blueprint Registry<br>Extensible]
+    end
+
+    style Server fill:#f9f0ff,stroke:#6c3,stroke-width:2px
+    style Client fill:#f0f8ff,stroke:#36c,stroke-width:2px
+    style ServerCore fill:#efe,stroke:#6c3
+    style Resolution fill:#ffd,stroke:#c93
+    style ClientTransport fill:#def,stroke:#36c
 ```
 
 The server owns the UI definition and state. The client is a thin rendering layer that translates data into native
