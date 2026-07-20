@@ -44,7 +44,7 @@ verifiable chain of state for zero-trust architectures.
 ## Architecture Overview
 
 ```mermaid
-graph TD
+graph LR
     subgraph Server [SERVER]
         subgraph ServerCore [Core Components]
             KotlinDSL[Kotlin DSL<br>UI Tree] --> BusinessLogic[Business Logic<br>Resolve]
@@ -54,8 +54,6 @@ graph TD
         ServerCore --> Resolution[Resolution<br>JSON / ProtoBuf]
     end
 
-    Resolution -->|HTTP / gRPC / WebSocket| ClientTransport
-
     subgraph Client [CLIENT]
         ClientTransport[Transport Layer] --> ComposeRenderer[Compose Renderer<br>Native UI]
         
@@ -63,11 +61,16 @@ graph TD
         ComposeRenderer --> BlueprintRegistry[Blueprint Registry<br>Extensible]
     end
 
+    Resolution -->|HTTP / gRPC / WebSocket| ClientTransport
+
     style Server fill:#e8daef,stroke:#6c3483,color:#1a1a1a
     style Client fill:#d6eaf8,stroke:#2471a3,color:#1a1a1a
     style ServerCore fill:#d5f5e3,stroke:#1e8449,color:#1a1a1a
     style Resolution fill:#f9e79f,stroke:#b7950b,color:#1a1a1a
     style ClientTransport fill:#aed6f1,stroke:#1f618d,color:#1a1a1a
+
+    linkStyle default stroke:#333,stroke-width:2px
+    linkStyle 3 stroke:#c0392b,stroke-width:3px
 ```
 
 The server owns the UI definition and state. The client is a thin rendering layer that translates data into native
