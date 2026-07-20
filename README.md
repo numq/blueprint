@@ -63,11 +63,11 @@ graph TD
         ComposeRenderer --> BlueprintRegistry[Blueprint Registry<br>Extensible]
     end
 
-    style Server fill:#f9f0ff,stroke:#6c3,stroke-width:2px
-    style Client fill:#f0f8ff,stroke:#36c,stroke-width:2px
-    style ServerCore fill:#efe,stroke:#6c3
-    style Resolution fill:#ffd,stroke:#c93
-    style ClientTransport fill:#def,stroke:#36c
+    style Server fill:#e8daef,stroke:#6c3483,color:#1a1a1a
+    style Client fill:#d6eaf8,stroke:#2471a3,color:#1a1a1a
+    style ServerCore fill:#d5f5e3,stroke:#1e8449,color:#1a1a1a
+    style Resolution fill:#f9e79f,stroke:#b7950b,color:#1a1a1a
+    style ClientTransport fill:#aed6f1,stroke:#1f618d,color:#1a1a1a
 ```
 
 The server owns the UI definition and state. The client is a thin rendering layer that translates data into native
