@@ -1,7 +1,10 @@
 package io.github.numq.blueprint.chain
 
 import io.github.numq.blueprint.runtime.Blueprint
-import io.github.numq.blueprint.runtime.action.StateDeltaBlock
+import io.github.numq.blueprint.runtime.fp.Either
+import io.github.numq.blueprint.runtime.fp.foldEither
+import io.github.numq.blueprint.runtime.fp.left
+import io.github.numq.blueprint.runtime.fp.right
 
 data class BlueprintChain(
     val links: List<Blueprint> = emptyList(),
@@ -19,69 +22,73 @@ data class BlueprintChain(
 
     val size: Int get() = links.size
 
-    fun push(blueprint: Blueprint): BlueprintChain {
-        verifyCryptographicLink(blueprint = blueprint)
+    fun reduce(event: ChainEvent): Either<ChainError, BlueprintChain> = when (event) {
+        is ChainEvent.Push -> when {
+            strictMode && links.isNotEmpty() -> when (val currentHash = current?.hash) {
+                event.blueprint.previousHash -> copy(links = links + event.blueprint, lastAction = Action.PUSH).right()
 
-        return copy(links = links + blueprint, lastAction = Action.PUSH)
-    }
-
-    fun pop(): BlueprintChain {
-        if (!canPop) return this
-
-        return copy(links = links.dropLast(1), lastAction = Action.POP)
-    }
-
-    fun replace(blueprint: Blueprint): BlueprintChain {
-        if (links.isEmpty()) {
-            return copy(links = listOf(blueprint), lastAction = Action.REPLACE)
-        }
-
-        val targetPreviousHash = if (links.size > 1) links[links.size - 2].hash else null
-
-        if (strictMode && targetPreviousHash != null && blueprint.previousHash != targetPreviousHash) {
-            throw ChainException("Replace Failed! Expected previous_hash: $targetPreviousHash, but got: ${blueprint.previousHash}")
-        }
-
-        return copy(links = links.dropLast(1) + blueprint, lastAction = Action.REPLACE)
-    }
-
-    fun applyDeltaBlocks(deltaBlocks: List<StateDeltaBlock>): BlueprintChain {
-        if (links.isEmpty() || deltaBlocks.isEmpty()) return this
-
-        var currentBlueprint = links.last()
-
-        for (block in deltaBlocks) {
-            if (strictMode && currentBlueprint.hash != block.previousHash) {
-                throw ChainException("State Sync Error! Expected state hash: ${currentBlueprint.hash}, but delta block targets: ${block.previousHash}.")
+                else -> ChainError.HashMismatch(
+                    expected = currentHash ?: "null", actual = event.blueprint.previousHash
+                ).left()
             }
 
-            if (strictMode && verifier != null) {
-                val isValid = verifier.verify(block.newHash, block.signature)
+            else -> copy(links = links + event.blueprint, lastAction = Action.PUSH).right()
+        }
 
-                if (!isValid) {
-                    throw ChainException("Signature Verification Failed! Delta block signature is invalid. Data may be tampered.")
+        is ChainEvent.Pop -> when {
+            canPop -> copy(links = links.dropLast(1), lastAction = Action.POP).right()
+
+            else -> ChainError.CannotPopEmptyChain.left()
+        }
+
+        is ChainEvent.Replace -> when {
+            links.isEmpty() -> copy(links = listOf(event.blueprint), lastAction = Action.REPLACE).right()
+
+            else -> {
+                val targetPreviousHash = when {
+                    links.size > 1 -> links[links.size - 2].hash
+
+                    else -> null
+                }
+
+                when {
+                    strictMode && targetPreviousHash != null && event.blueprint.previousHash != targetPreviousHash -> ChainError.HashMismatch(
+                        expected = targetPreviousHash, actual = event.blueprint.previousHash
+                    ).left()
+
+                    else -> copy(links = links.dropLast(1) + event.blueprint, lastAction = Action.REPLACE).right()
                 }
             }
-
-            currentBlueprint = currentBlueprint.copy(
-                state = currentBlueprint.state + block.patches, hash = block.newHash
-            )
         }
 
-        val newLinks = links.toMutableList()
+        is ChainEvent.ApplyDeltas -> when {
+            links.isEmpty() || event.blocks.isEmpty() -> right()
 
-        newLinks[newLinks.lastIndex] = currentBlueprint
+            else -> event.blocks.foldEither(initial = this) { currentChain, block ->
+                val currentBlueprint = currentChain.current ?: return@foldEither currentChain.right()
 
-        return copy(links = newLinks, lastAction = Action.IDLE)
-    }
+                when {
+                    strictMode && currentBlueprint.hash != block.previousHash -> ChainError.HashMismatch(
+                        expected = currentBlueprint.hash, actual = block.previousHash
+                    ).left()
 
-    private fun verifyCryptographicLink(blueprint: Blueprint) {
-        if (!strictMode || links.isEmpty()) return
+                    strictMode && verifier != null && !verifier.verify(
+                        payload = block.newHash, signatureBase64 = block.signature
+                    ) -> ChainError.SignatureVerificationFailed(blockHash = block.newHash).left()
 
-        val currentHash = current?.hash
+                    else -> {
+                        val updatedBlueprint = currentBlueprint.copy(
+                            state = currentBlueprint.state + block.patches, hash = block.newHash
+                        )
 
-        if (blueprint.previousHash != currentHash) {
-            throw ChainException("Man-in-the-Middle attack detected or server desync. Expected previous_hash: $currentHash, but got: ${blueprint.previousHash}")
+                        val newLinks = currentChain.links.toMutableList()
+
+                        newLinks[newLinks.lastIndex] = updatedBlueprint
+
+                        currentChain.copy(links = newLinks, lastAction = Action.IDLE).right()
+                    }
+                }
+            }
         }
     }
 }
