@@ -10,7 +10,8 @@ serializable data models. The server delivers these blueprints at runtime, and t
 Jetpack Compose.
 
 This enables instant UI updates without app store releases, centralized business logic, and a cryptographically
-verifiable chain of state for zero-trust architectures.
+verifiable chain of state for zero-trust architectures. Under the hood, it uses a pure functional state machine (MVI)
+with event sourcing, ensuring predictable, crash-free state reduction.
 
 ---
 
@@ -401,28 +402,43 @@ LazyColumn(
 ### Managing the Chain State
 
 ```kotlin
-class ApplicationStore {
-    private fun handleResolution(resolution: Resolution) {
-        _state.update { currentState ->
-            var chain = currentState.chain
-
-            // Apply navigation effects
-            resolution.effects.forEach { effect ->
-                when (effect) {
-                    is Effect.Navigation.PUSH -> chain = chain.push(effect.blueprint!!)
-                    is Effect.Navigation.POP -> chain = chain.pop()
-                    is Effect.Navigation.REPLACE -> chain = chain.replace(effect.blueprint!!)
-                    is Effect.Snackbar -> showSnackbar(effect)
-                    is Effect.Dialog -> showDialog(effect)
-                }
+class ApplicationStore(private val scope: CoroutineScope) {
+  private fun handleResolution(resolution: Resolution) {
+    // 1. Map server resolution to pure Algebraic Data Types (Chain Events)
+    val events = buildList {
+      resolution.effects.forEach { effect ->
+        when (effect) {
+          is Effect.Navigation -> {
+            when (effect.type) {
+              Effect.Navigation.Type.PUSH -> effect.blueprint?.let { add(ChainEvent.Push(it)) }
+              Effect.Navigation.Type.POP -> add(ChainEvent.Pop)
+              Effect.Navigation.Type.REPLACE -> effect.blueprint?.let { add(ChainEvent.Replace(it)) }
             }
-
-            // Apply state delta patches (with hash verification)
-            chain = chain.applyDeltaBlocks(resolution.deltaBlocks)
-
-            currentState.copy(chain = chain, isLoading = false)
+          }
+          // Side-effects are handled separately by interpreters
+          is Effect.Snackbar -> {}
+          is Effect.Dialog -> {}
         }
+      }
+      if (resolution.deltaBlocks.isNotEmpty()) {
+        add(ChainEvent.ApplyDeltas(resolution.deltaBlocks))
+      }
     }
+
+    // 2. Pure functional state reduction with Monadic fold (Either fail-fast)
+    _state.update { currentState ->
+      when (val result = events.foldEither(currentState.chain) { chain, event -> chain.reduce(event) }) {
+        is Either.Left -> {
+          // Handle cryptographic or navigation errors safely
+          currentState.copy(error = "Security/Chain Error: ${result.value}", isLoading = false)
+        }
+        is Either.Right -> {
+          // Update state with the successfully verified chain
+          currentState.copy(chain = result.value, isLoading = false)
+        }
+      }
+    }
+  }
 }
 ```
 
