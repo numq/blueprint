@@ -403,42 +403,42 @@ LazyColumn(
 
 ```kotlin
 class ApplicationStore(private val scope: CoroutineScope) {
-  private fun handleResolution(resolution: Resolution) {
-    // 1. Map server resolution to pure Algebraic Data Types (Chain Events)
-    val events = buildList {
-      resolution.effects.forEach { effect ->
-        when (effect) {
-          is Effect.Navigation -> {
-            when (effect.type) {
-              Effect.Navigation.Type.PUSH -> effect.blueprint?.let { add(ChainEvent.Push(it)) }
-              Effect.Navigation.Type.POP -> add(ChainEvent.Pop)
-              Effect.Navigation.Type.REPLACE -> effect.blueprint?.let { add(ChainEvent.Replace(it)) }
+    private fun handleResolution(resolution: Resolution) {
+        // 1. Map server resolution to pure Algebraic Data Types (Chain Events)
+        val events = buildList {
+            resolution.effects.forEach { effect ->
+                when (effect) {
+                    is Effect.Navigation -> {
+                        when (effect.type) {
+                            Effect.Navigation.Type.PUSH -> effect.blueprint?.let { add(ChainEvent.Push(it)) }
+                            Effect.Navigation.Type.POP -> add(ChainEvent.Pop)
+                            Effect.Navigation.Type.REPLACE -> effect.blueprint?.let { add(ChainEvent.Replace(it)) }
+                        }
+                    }
+                    // Side-effects are handled separately by interpreters
+                    is Effect.Snackbar -> {}
+                    is Effect.Dialog -> {}
+                }
             }
-          }
-          // Side-effects are handled separately by interpreters
-          is Effect.Snackbar -> {}
-          is Effect.Dialog -> {}
+            if (resolution.deltaBlocks.isNotEmpty()) {
+                add(ChainEvent.ApplyDeltas(resolution.deltaBlocks))
+            }
         }
-      }
-      if (resolution.deltaBlocks.isNotEmpty()) {
-        add(ChainEvent.ApplyDeltas(resolution.deltaBlocks))
-      }
-    }
 
-    // 2. Pure functional state reduction with Monadic fold (Either fail-fast)
-    _state.update { currentState ->
-      when (val result = events.foldEither(currentState.chain) { chain, event -> chain.reduce(event) }) {
-        is Either.Left -> {
-          // Handle cryptographic or navigation errors safely
-          currentState.copy(error = "Security/Chain Error: ${result.value}", isLoading = false)
+        // 2. Pure functional state reduction with Monadic fold (Either fail-fast)
+        _state.update { currentState ->
+            when (val result = events.foldEither(currentState.chain) { chain, event -> chain.reduce(event) }) {
+                is Either.Left -> {
+                    // Handle cryptographic or navigation errors safely
+                    currentState.copy(error = "Security/Chain Error: ${result.value}", isLoading = false)
+                }
+                is Either.Right -> {
+                    // Update state with the successfully verified chain
+                    currentState.copy(chain = result.value, isLoading = false)
+                }
+            }
         }
-        is Either.Right -> {
-          // Update state with the successfully verified chain
-          currentState.copy(chain = result.value, isLoading = false)
-        }
-      }
     }
-  }
 }
 ```
 
