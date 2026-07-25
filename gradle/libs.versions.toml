@@ -22,12 +22,10 @@ kotlinx-serialization = "1.11.0"
 arrow = "2.2.2.1"
 koin = "4.2.1"
 uuid = "0.8.4"
-datastore = "1.2.1"
 gson = "2.13.2"
 okio = "3.17.0"
 turbine = "1.2.1"
 konsist = "0.17.3"
-protobuf = "4.35.1"
 wire = "6.4.0"
 ktor = "3.0.3"
 coil = "3.0.0-alpha08"
@@ -56,14 +54,11 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
-datastore = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
-datastore-preferences = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
-protobuf = { module = "com.google.protobuf:protobuf-kotlin-lite", version.ref = "protobuf" }
 wire-runtime = { module = "com.squareup.wire:wire-runtime", version.ref = "wire" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
