@@ -1,3 +1,6 @@
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.21-blue.svg)](https://kotlinlang.org)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+
 # Blueprint
 
 **Server-Driven UI (SDUI) / Backend-Driven UI (BDUI) framework for Kotlin Multiplatform (KMP).**
