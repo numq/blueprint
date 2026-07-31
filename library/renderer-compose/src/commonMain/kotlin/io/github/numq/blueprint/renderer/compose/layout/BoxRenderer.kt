@@ -2,6 +2,7 @@ package io.github.numq.blueprint.renderer.compose.layout
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import io.github.numq.blueprint.renderer.BlueprintRenderer
 import io.github.numq.blueprint.renderer.ComponentRenderer
 import io.github.numq.blueprint.renderer.compose.toComposeModifier
@@ -15,7 +16,9 @@ object BoxRenderer : ComponentRenderer<LayoutPayload.Box> {
             modifier = node.modifiers.toComposeModifier(), contentAlignment = payload.contentAlignment.toBoxAlignment()
         ) {
             node.children.forEach { child ->
-                renderer.render(child)
+                key(child.key) {
+                    renderer.render(child)
+                }
             }
         }
     }

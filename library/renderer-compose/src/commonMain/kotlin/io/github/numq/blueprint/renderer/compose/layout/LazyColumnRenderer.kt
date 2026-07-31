@@ -2,9 +2,11 @@ package io.github.numq.blueprint.renderer.compose.layout
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.unit.dp
 import io.github.numq.blueprint.renderer.BlueprintRenderer
 import io.github.numq.blueprint.renderer.ComponentRenderer
@@ -14,6 +16,8 @@ import io.github.numq.blueprint.runtime.BlueprintNode
 import io.github.numq.blueprint.runtime.action.Intent
 import io.github.numq.blueprint.runtime.action.IntentPayload
 import io.github.numq.blueprint.runtime.component.LayoutPayload
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 
 object LazyColumnRenderer : ComponentRenderer<LayoutPayload.LazyColumn> {
     @Composable
@@ -22,25 +26,22 @@ object LazyColumnRenderer : ComponentRenderer<LayoutPayload.LazyColumn> {
 
         val listState = rememberLazyListState()
 
-        payload.onLoadMoreIntentId?.let { id ->
-            val shouldLoadMore by remember {
-                derivedStateOf {
-                    val totalItems = listState.layoutInfo.totalItemsCount
+        payload.onLoadMoreIntentId?.let { intent ->
+            LaunchedEffect(listState, intent, payload.loadMoreThreshold) {
+                snapshotFlow {
+                    val layoutInfo = listState.layoutInfo
 
-                    val lastVisible = (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+                    val totalItems = layoutInfo.totalItemsCount
 
-                    totalItems > 0 && lastVisible >= (totalItems - payload.loadMoreThreshold)
-                }
-            }
+                    val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
 
-            LaunchedEffect(shouldLoadMore) {
-                if (shouldLoadMore) {
+                    totalItems to lastVisibleItem
+                }.filter { (total, lastVisible) ->
+                    total > 0 && lastVisible >= (total - payload.loadMoreThreshold)
+                }.distinctUntilChanged { old, new -> old.first == new.first }.collect { (total, _) ->
                     intentHandler.onIntent(
                         Intent(
-                            id = id,
-                            type = "LOAD_MORE",
-                            nodeKey = node.key,
-                            payload = IntentPayload.IntValue(node.children.size)
+                            id = intent, type = "LOAD_MORE", nodeKey = node.key, payload = IntentPayload.IntValue(total)
                         )
                     )
                 }
@@ -54,7 +55,10 @@ object LazyColumnRenderer : ComponentRenderer<LayoutPayload.LazyColumn> {
             verticalArrangement = payload.verticalArrangement.toVertical(),
             horizontalAlignment = payload.horizontalAlignment.toHorizontal()
         ) {
-            itemsIndexed(node.children, key = { _, child -> child.key }) { _, child ->
+            items(
+                items = node.children,
+                key = { child -> child.key },
+                contentType = { child -> child.payload::class.simpleName }) { child ->
                 renderer.render(child)
             }
         }
