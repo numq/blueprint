@@ -13,6 +13,8 @@ import io.github.numq.blueprint.runtime.action.Intent
 import io.github.numq.blueprint.runtime.action.IntentPayload
 import io.github.numq.blueprint.runtime.component.MaterialPayload
 import io.github.numq.blueprint.runtime.type.resolve
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 object TextFieldRenderer : ComponentRenderer<MaterialPayload.TextField> {
     private const val INTENT_TYPE = "TEXT_CHANGE"
@@ -27,19 +29,27 @@ object TextFieldRenderer : ComponentRenderer<MaterialPayload.TextField> {
 
         var localValue by remember(serverValue) { mutableStateOf(serverValue) }
 
+        val debounceTime = payload.debounceMs ?: 300L
+
+        LaunchedEffect(localValue) {
+            if (localValue != serverValue) {
+                payload.onChangeIntentId?.let { intentId ->
+                    delay(debounceTime.milliseconds)
+
+                    intentHandler.onIntent(
+                        Intent(
+                            id = intentId,
+                            type = INTENT_TYPE,
+                            nodeKey = node.key,
+                            payload = IntentPayload.TextValue(localValue)
+                        )
+                    )
+                }
+            }
+        }
+
         OutlinedTextField(value = localValue, onValueChange = { newValue ->
             localValue = newValue
-
-            payload.onChangeIntentId?.let { intentId ->
-                intentHandler.onIntent(
-                    Intent(
-                        id = intentId,
-                        type = INTENT_TYPE,
-                        nodeKey = node.key,
-                        payload = IntentPayload.TextValue(newValue)
-                    )
-                )
-            }
         }, enabled = payload.enabled.resolve(state), modifier = node.modifiers.toComposeModifier(), placeholder = {
             payload.placeholder?.let { placeholder ->
                 Text(placeholder.resolve(state))

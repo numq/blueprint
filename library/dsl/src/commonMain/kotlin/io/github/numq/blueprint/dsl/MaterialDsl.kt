@@ -82,11 +82,12 @@ fun BlueprintDsl.TextField(
     placeholder: DynamicString? = null,
     enabled: DynamicBool = true.asDynamic,
     onChangeIntentId: String? = null,
+    debounceMs: Long? = null,
     key: String? = null,
     modifiers: ModifierScope.() -> Unit = {}
 ) {
     node(
-        payload = MaterialPayload.TextField(value, placeholder, enabled, onChangeIntentId),
+        payload = MaterialPayload.TextField(value, placeholder, enabled, onChangeIntentId, debounceMs),
         key = key,
         modifiers = modifiers
     )
@@ -97,9 +98,10 @@ fun BlueprintDsl.TextField(
     placeholder: String? = null,
     enabled: Boolean = true,
     onChangeIntentId: String? = null,
+    debounceMs: Long? = null,
     key: String? = null,
     modifiers: ModifierScope.() -> Unit = {}
-) = TextField(value.asDynamic, placeholder?.asDynamic, enabled.asDynamic, onChangeIntentId, key, modifiers)
+) = TextField(value.asDynamic, placeholder?.asDynamic, enabled.asDynamic, onChangeIntentId, debounceMs, key, modifiers)
 
 fun BlueprintDsl.Checkbox(
     checked: DynamicBool = false.asDynamic,

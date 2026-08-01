@@ -46,7 +46,8 @@ sealed interface MaterialPayload : ComponentPayload {
         val value: DynamicString,
         val placeholder: DynamicString? = null,
         val enabled: DynamicBool = DynamicBool.Literal(true),
-        val onChangeIntentId: String? = null
+        val onChangeIntentId: String? = null,
+        val debounceMs: Long? = null
     ) : MaterialPayload
 
     @Serializable
