@@ -23,8 +23,20 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-include(":example:client")
-project(":example:client").projectDir = file("example/client")
+include(":example:client:androidApp")
+project(":example:client:androidApp").projectDir = file("example/client/androidApp")
+
+include(":example:client:desktopApp")
+project(":example:client:desktopApp").projectDir = file("example/client/desktopApp")
+
+include(":example:client:iosApp")
+project(":example:client:iosApp").projectDir = file("example/client/iosApp")
+
+include(":example:client:shared")
+project(":example:client:shared").projectDir = file("example/client/shared")
+
+include(":example:client:webApp")
+project(":example:client:webApp").projectDir = file("example/client/webApp")
 
 include(":example:server")
 project(":example:server").projectDir = file("example/server")
