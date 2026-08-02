@@ -2,6 +2,7 @@ package io.github.numq.blueprint.example.server
 
 import io.github.numq.blueprint.runtime.Blueprint
 import io.github.numq.blueprint.runtime.action.StateDeltaBlock
+import io.github.numq.blueprint.runtime.blueprintSerializersModule
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
 import java.security.KeyPairGenerator
@@ -11,7 +12,9 @@ import java.util.*
 
 @OptIn(ExperimentalSerializationApi::class)
 object CryptoUtils {
-    private val protoBuf = ProtoBuf
+    private val protoBuf = ProtoBuf {
+        serializersModule = blueprintSerializersModule
+    }
 
     // RSA (2048 bit)
     // private key: Vault/KMS, public key: client application

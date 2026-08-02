@@ -3,10 +3,12 @@ package io.github.numq.blueprint.example.server
 import io.github.numq.blueprint.runtime.action.Effect
 import io.github.numq.blueprint.runtime.action.Intent
 import io.github.numq.blueprint.runtime.action.Resolution
+import io.github.numq.blueprint.runtime.blueprintSerializersModule
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.protobuf.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -16,7 +18,17 @@ import kotlinx.serialization.protobuf.ProtoBuf
 @OptIn(ExperimentalSerializationApi::class)
 fun Application.module() {
     install(ContentNegotiation) {
-        protobuf(ProtoBuf)
+        protobuf(ProtoBuf {
+            serializersModule = blueprintSerializersModule
+        })
+    }
+
+    install(StatusPages) {
+        exception<Throwable> { call, cause ->
+            cause.printStackTrace()
+
+            call.respondText(text = "Server Error: ${cause.message}", status = HttpStatusCode.InternalServerError)
+        }
     }
 
     val orderListScreen = OrderListScreen()
