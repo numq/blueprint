@@ -46,7 +46,6 @@ gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
-konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 wire-runtime = { module = "com.squareup.wire:wire-runtime", version.ref = "wire" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
