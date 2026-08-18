@@ -6,22 +6,43 @@ import io.github.numq.blueprint.runtime.fp.foldEither
 import io.github.numq.blueprint.runtime.fp.left
 import io.github.numq.blueprint.runtime.fp.right
 
+/**
+ * Immutable state container managing navigation history stack and cryptographic integrity verification
+ * for server-driven UI screens.
+ *
+ * @property links ordered list of active screen [Blueprint] models in the navigation stack.
+ * @property lastAction last transition type applied to this chain.
+ * @property strictMode when `true`, cryptographic parent-hash verification and RSA signature checks are enforced.
+ * @property verifier optional [SignatureVerifier] engine used to validate signed delta updates.
+ */
 data class BlueprintChain(
     val links: List<Blueprint> = emptyList(),
     val lastAction: Action = Action.IDLE,
     val strictMode: Boolean = true,
     val verifier: SignatureVerifier? = null
 ) {
+    /**
+     * Navigation actions recorded by the chain stack.
+     */
     enum class Action {
         PUSH, POP, REPLACE, IDLE
     }
 
+    /** The current active screen at the top of the stack, or `null` if empty. */
     val current: Blueprint? get() = links.lastOrNull()
 
+    /** `true` if there are enough screens in the stack to perform a back ([POP]) operation. */
     val canPop: Boolean get() = links.size > 1
 
+    /** Number of screens currently in the stack. */
     val size: Int get() = links.size
 
+    /**
+     * Applies a [ChainEvent] to produce a new state of [BlueprintChain], or returns a [ChainError] if validation fails.
+     *
+     * @param event navigation or state patch event to reduce.
+     * @return updated [BlueprintChain] on success, or [ChainError] on failure.
+     */
     fun reduce(event: ChainEvent): Either<ChainError, BlueprintChain> = when (event) {
         is ChainEvent.Push -> when {
             strictMode && links.isNotEmpty() -> when (val currentHash = current?.hash) {

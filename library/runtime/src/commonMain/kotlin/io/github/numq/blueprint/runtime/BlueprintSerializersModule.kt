@@ -1,5 +1,6 @@
 package io.github.numq.blueprint.runtime
 
+import io.github.numq.blueprint.runtime.action.IntentPayload
 import io.github.numq.blueprint.runtime.component.ComponentPayload
 import io.github.numq.blueprint.runtime.component.LayoutPayload
 import io.github.numq.blueprint.runtime.component.MaterialPayload
@@ -33,4 +34,22 @@ private val materialPayloadSerializersModule = SerializersModule {
     }
 }
 
-val blueprintSerializersModule = layoutPayloadSerializersModule + materialPayloadSerializersModule
+private val intentPayloadSerializersModule = SerializersModule {
+    polymorphic(IntentPayload::class) {
+        subclass(IntentPayload.Empty::class)
+        subclass(IntentPayload.TextValue::class)
+        subclass(IntentPayload.BoolValue::class)
+        subclass(IntentPayload.IntValue::class)
+        subclass(IntentPayload.FloatValue::class)
+    }
+}
+
+/**
+ * Standard [SerializersModule] containing polymorphic mappings for all built-in
+ * Blueprint layout payloads, Material 3 components, and action intent payloads.
+ *
+ * Must be registered in `kotlinx.serialization.protobuf.ProtoBuf` configurations
+ * on both server and client engines.
+ */
+val blueprintSerializersModule: SerializersModule =
+    layoutPayloadSerializersModule + materialPayloadSerializersModule + intentPayloadSerializersModule

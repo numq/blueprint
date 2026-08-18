@@ -57,6 +57,7 @@ class ApplicationStore(private val scope: CoroutineScope, private val client: Ht
         _state.update { currentState ->
             when (val result =
                 events.foldEither(initial = currentState.chain) { chain, event -> chain.reduce(event) }) {
+
                 is Either.Left -> {
                     val errorMessage = when (val error = result.value) {
                         is ChainError.HashMismatch -> "Security Alert: Hash Mismatch (Expected ${error.expected})"
@@ -65,6 +66,7 @@ class ApplicationStore(private val scope: CoroutineScope, private val client: Ht
 
                         is ChainError.CannotPopEmptyChain -> "Navigation Error: Cannot go back further"
                     }
+
                     currentState.copy(error = errorMessage, isLoading = false)
                 }
 

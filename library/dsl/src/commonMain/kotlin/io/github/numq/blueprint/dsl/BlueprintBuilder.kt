@@ -5,6 +5,11 @@ import io.github.numq.blueprint.runtime.BlueprintMetadata
 import io.github.numq.blueprint.runtime.BlueprintNode
 import io.github.numq.blueprint.runtime.component.LayoutPayload
 
+/**
+ * Top-level builder for constructing complete [Blueprint] screen instances.
+ *
+ * @param id unique screen or layout identifier.
+ */
 class BlueprintBuilder(private val id: String) {
     private var metadata: BlueprintMetadata? = null
 
@@ -12,6 +17,9 @@ class BlueprintBuilder(private val id: String) {
 
     private lateinit var rootNode: BlueprintNode
 
+    /**
+     * Configures optional screen metadata (title, description, custom fields).
+     */
     fun metadata(title: String? = null, description: String? = null, build: MetadataBuilder.() -> Unit = {}) {
         val builder = MetadataBuilder().apply {
             this.title = title
@@ -21,10 +29,16 @@ class BlueprintBuilder(private val id: String) {
         metadata = builder.build()
     }
 
+    /**
+     * Populates initial state key-value pairs associated with this screen.
+     */
     fun state(vararg pairs: Pair<String, String>) {
         state.putAll(pairs)
     }
 
+    /**
+     * Configures the root UI component tree.
+     */
     fun root(builder: BlueprintDsl.() -> Unit) {
         val dsl = BlueprintDsl().apply(builder)
 
@@ -36,4 +50,13 @@ class BlueprintBuilder(private val id: String) {
     )
 }
 
-fun blueprint(id: String = "screen", block: BlueprintBuilder.() -> Unit) = BlueprintBuilder(id).apply(block).build()
+/**
+ * Entry point function for creating a [Blueprint] screen model declaratively.
+ *
+ * @param id screen identifier.
+ * @param block layout builder configuration block.
+ * @return fully constructed [Blueprint] instance ready for serialization.
+ */
+fun blueprint(
+    id: String = "screen", block: BlueprintBuilder.() -> Unit
+): Blueprint = BlueprintBuilder(id = id).apply(block).build()

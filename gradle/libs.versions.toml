@@ -17,6 +17,7 @@ koin = "4.2.1"
 wire = "6.4.0"
 ktor = "3.0.3"
 coil = "3.0.0-alpha08"
+maven-publish = "0.37.0"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
@@ -61,3 +62,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
