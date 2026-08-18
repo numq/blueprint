@@ -1,3 +1,4 @@
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.numq.blueprint/runtime)](https://central.sonatype.com/artifact/io.github.numq.blueprint/runtime)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.21-blue.svg)](https://kotlinlang.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
@@ -41,7 +42,7 @@ with event sourcing, ensuring predictable, crash-free state reduction.
 - [Extensibility](#extensibility)
     - [Custom Components & Renderers](#custom-components--renderers)
 - [Real-World Example](#real-world-example)
-- [Getting Started](#getting-started-tbd-)
+- [Getting Started](#getting-started)
 
 ---
 
@@ -523,7 +524,7 @@ example/
 
 ---
 
-## Getting Started (TBD 🚧)
+## Getting Started
 
 **Gradle dependency coordinates** (add to your `build.gradle.kts`):
 
